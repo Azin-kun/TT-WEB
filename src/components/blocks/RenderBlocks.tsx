@@ -1,0 +1,105 @@
+import { getWorks, getServices, getManifesto, type Locale } from '../../lib/cms'
+import type { Page, SiteSetting } from '../../payload-types'
+import { HeroBlock } from './HeroBlock'
+import { ManifestoStrip } from './ManifestoStrip'
+import { FeaturedWorks } from './FeaturedWorks'
+import { ServicesRows } from './ServicesRows'
+import { ArchiveTeaser } from './ArchiveTeaser'
+import { ContactMailto } from './ContactMailto'
+
+type Blocks = NonNullable<Page['layout']>
+
+export async function RenderBlocks({
+  blocks,
+  locale,
+  settings,
+}: {
+  blocks: Blocks
+  locale: Locale
+  settings: SiteSetting
+}) {
+  return (
+    <>
+      {await Promise.all(
+        blocks.map(async (block) => {
+          switch (block.blockType) {
+            case 'hero':
+              return (
+                <HeroBlock
+                  key={block.id}
+                  line1={block.line1}
+                  line2={block.line2}
+                  locationLine={block.locationLine}
+                  scrollCue={block.scrollCue}
+                />
+              )
+
+            case 'manifestoStrip': {
+              const statements = await getManifesto(locale)
+              return <ManifestoStrip key={block.id} statements={statements.map((s) => s.text)} />
+            }
+
+            case 'featuredWorks': {
+              const works = await getWorks(locale, { featured: true })
+              return (
+                <FeaturedWorks
+                  key={block.id}
+                  heading={block.heading}
+                  locale={locale}
+                  works={works.map((w) => ({
+                    id: w.id,
+                    title: w.title,
+                    slug: w.slug,
+                    category: w.category,
+                    year: w.year,
+                  }))}
+                />
+              )
+            }
+
+            case 'servicesRows': {
+              const services = await getServices(locale)
+              return (
+                <ServicesRows
+                  key={block.id}
+                  heading={block.heading}
+                  services={services.map((s) => ({
+                    id: s.id,
+                    name: s.name,
+                    capabilities: (s.capabilities || []).map((c) => c.item),
+                  }))}
+                />
+              )
+            }
+
+            case 'archiveTeaser': {
+              const works = await getWorks(locale)
+              return (
+                <ArchiveTeaser
+                  key={block.id}
+                  countTemplate={block.countTemplate}
+                  count={works.length}
+                  locale={locale}
+                />
+              )
+            }
+
+            case 'contactMailto':
+              return (
+                <ContactMailto
+                  key={block.id}
+                  heading={block.heading}
+                  email={block.emailOverride || settings.email}
+                  locationLine={settings.locationLine}
+                  timezone={settings.timezone}
+                />
+              )
+
+            default:
+              return null
+          }
+        }),
+      )}
+    </>
+  )
+}
