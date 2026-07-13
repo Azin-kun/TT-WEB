@@ -12,18 +12,3 @@ export async function loadLogo(): Promise<THREE.Group> {
   draco.dispose()
   return gltf.scene
 }
-
-/** Load the Obsidian env-map through PMREM for correct glass reflections. */
-export async function loadEnvMap(renderer: THREE.WebGLRenderer): Promise<THREE.Texture | null> {
-  try {
-    const tex = await new THREE.TextureLoader().loadAsync('/media/obsidian-envmap.webp')
-    tex.mapping = THREE.EquirectangularReflectionMapping
-    const pmrem = new THREE.PMREMGenerator(renderer)
-    const env = pmrem.fromEquirectangular(tex).texture
-    tex.dispose()
-    pmrem.dispose()
-    return env
-  } catch {
-    return null
-  }
-}

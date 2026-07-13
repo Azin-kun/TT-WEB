@@ -33,24 +33,6 @@ export const SiteSettings: GlobalConfig = {
         { name: 'archive', type: 'text', localized: true },
       ],
     },
-    {
-      name: 'switchLabels',
-      type: 'group',
-      admin: { description: 'Appearance switch pill labels' },
-      fields: [
-        { name: 'atelier', type: 'text', localized: true },
-        { name: 'obsidian', type: 'text', localized: true },
-      ],
-    },
-    {
-      name: 'invitationCopy',
-      type: 'group',
-      admin: { description: 'Invitation band under the hero, per current appearance' },
-      fields: [
-        { name: 'toObsidian', type: 'text', localized: true },
-        { name: 'toAtelier', type: 'text', localized: true },
-      ],
-    },
     { name: 'archiveCountTemplate', type: 'text', localized: true },
     {
       name: 'seo',
@@ -59,15 +41,6 @@ export const SiteSettings: GlobalConfig = {
         { name: 'title', type: 'text', localized: true },
         { name: 'description', type: 'textarea', localized: true },
       ],
-    },
-    {
-      name: 'transitionEnabled',
-      type: 'checkbox',
-      defaultValue: true,
-      admin: {
-        description:
-          'Owner kill-switch: when off, the appearance switch uses a plain 0.4s crossfade instead of the light-burst sequence',
-      },
     },
   ],
 }

@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import type { SiteSetting } from '../../payload-types'
 import type { Locale } from '../../lib/i18n'
-import { AppearanceSwitch } from './AppearanceSwitch'
 import { LocaleToggle } from './LocaleToggle'
 
 export function Header({ locale, settings }: { locale: Locale; settings: SiteSetting }) {
@@ -43,15 +42,11 @@ export function Header({ locale, settings }: { locale: Locale; settings: SiteSet
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 2vw, 22px)', flexShrink: 0 }}>
           <LocaleToggle locale={locale} />
-          <AppearanceSwitch
-            labels={{ atelier: settings.switchLabels?.atelier, obsidian: settings.switchLabels?.obsidian }}
-          />
         </div>
       </div>
       <style>{`
         @media (max-width: 560px) {
           .tt-header-nav .label { display: none; }
-          .tt-switch .side { padding: 8px 10px; font-size: 0.75rem; }
         }
         @media (max-width: 420px) {
           .tt-header-nav { display: none; }

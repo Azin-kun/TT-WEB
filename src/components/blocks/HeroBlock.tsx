@@ -64,7 +64,12 @@ export function HeroBlock({ line1, line2, locationLine, scrollCue }: Props) {
           <h1
             ref={line1Ref}
             className="tt-display"
-            style={{ fontSize: 'var(--text-h1)', lineHeight: 'var(--leading-display)', margin: 0, maxWidth: '16ch' }}
+            style={{
+              fontSize: 'var(--text-h1)',
+              lineHeight: 'var(--leading-display)',
+              margin: 0,
+              maxWidth: 'min(16ch, 30vw)',
+            }}
           >
             {line1}
           </h1>
@@ -73,7 +78,13 @@ export function HeroBlock({ line1, line2, locationLine, scrollCue }: Props) {
           <div style={{ overflow: 'hidden', marginTop: '0.4em' }}>
             <p
               ref={line2Ref}
-              style={{ fontSize: 'var(--text-manifesto)', lineHeight: 'var(--leading-manifesto)', color: 'var(--muted)', maxWidth: '22ch', margin: 0 }}
+              style={{
+                fontSize: 'var(--text-manifesto)',
+                lineHeight: 'var(--leading-manifesto)',
+                color: 'var(--muted)',
+                maxWidth: 'min(20ch, 27vw)',
+                margin: 0,
+              }}
             >
               {line2}
             </p>

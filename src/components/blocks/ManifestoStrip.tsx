@@ -27,7 +27,15 @@ export function ManifestoStrip({ statements }: { statements: string[] }) {
 
     const ctx = gsap.context(() => {
       const splits = lines.map((line) => new SplitText(line, { type: 'words' }))
-      gsap.set(lines, { position: 'absolute', inset: 0, margin: 'auto', opacity: 0, y: 40 })
+      gsap.set(lines, {
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        xPercent: -50,
+        yPercent: -50,
+        opacity: 0,
+        y: 40,
+      })
       gsap.set(lines[0], { opacity: 1, y: 0 })
       splits.forEach((s) => gsap.set(s.words, { opacity: 0.12 }))
 

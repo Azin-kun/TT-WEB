@@ -1,6 +1,5 @@
 // Neutral placeholder card for work covers until real imagery (H4) arrives
-// (spec §6.4): paper card with a watermark logo in Atelier, carbon panel with
-// a signal-red edge glow in Obsidian. Both appearances driven by tokens only.
+// (spec §6.4): paper card with a watermark logo, driven by tokens only.
 export function PlaceholderFrame({
   aspectRatio = '3 / 2',
   label,

@@ -23,12 +23,12 @@ body {
     color 0.4s ease;
 }
 
-/* Atelier: real paper + grain. Obsidian: void (shader/poster layers behind content). */
-html[data-appearance='atelier'] body {
+/* Real paper + grain texture. */
+body {
   background-image: url('/media/paper-tile.webp');
   background-size: 620px auto;
 }
-html[data-appearance='atelier'] body::after {
+body::after {
   content: '';
   position: fixed;
   inset: 0;
@@ -63,13 +63,12 @@ h3,
   padding-inline: var(--gutter);
 }
 
-/* logo rendered via mask so it follows --fg in both appearances */
+/* logo rendered via mask so it follows --fg */
 .tt-logo {
   display: inline-block;
   background: var(--fg);
   mask: url('/media/logo-mono.svg') no-repeat center / contain;
   -webkit-mask: url('/media/logo-mono.svg') no-repeat center / contain;
-  transition: background-color 0.4s ease;
 }
 
 .tt-navlink {
@@ -90,38 +89,4 @@ h3,
   text-decoration: underline;
   text-underline-offset: 0.35em;
   text-decoration-color: var(--accent);
-}
-
-/* appearance switch pill */
-.tt-switch {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 4px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--panel) 72%, transparent);
-  backdrop-filter: blur(8px);
-  cursor: pointer;
-  min-height: 44px;
-}
-.tt-switch[disabled] {
-  cursor: wait;
-  opacity: 0.7;
-}
-.tt-switch .side {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4em;
-  padding: 8px 14px;
-  border-radius: 999px;
-  font-size: 0.8125rem;
-  color: var(--muted);
-  transition:
-    background-color 0.3s ease,
-    color 0.3s ease;
-}
-.tt-switch .side.on {
-  background: var(--fg);
-  color: var(--bg);
 }

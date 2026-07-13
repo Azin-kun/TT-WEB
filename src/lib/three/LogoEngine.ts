@@ -1,35 +1,26 @@
 import * as THREE from 'three'
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { CALIB, visibleHeight } from './calibration'
-import { loadLogo, loadEnvMap } from './loadLogo'
-import { makePencilMaterials, makeGlassMaterials, type LogoMaterials } from './materials'
-
-export type MaterialMode = 'atelier' | 'obsidian'
+import { loadLogo } from './loadLogo'
+import { makePencilMaterials, type LogoMaterials } from './materials'
 
 const DEG = Math.PI / 180
 const IDLE_W = (Math.PI * 2) / 14 // one revolution ≈ 14 s, +Y = CCW from above (spec §7)
-const LIGHT_WHITE = new THREE.Color(0xf4f4f6)
-const LIGHT_GOLD = new THREE.Color(0xffd34d)
 
 /**
  * Framework-agnostic three.js engine for the hero logo. Ported from the
  * owner-approved preview: idle counter-clockwise spin, cursor deflection with
- * spring return, 360° drag with inertia, keyboard rotation, and an
- * Atelier(pencil)/Obsidian(glass) material swap. React just mounts/disposes it.
+ * spring return, 360° drag with inertia, keyboard rotation, pencil-matcap
+ * materials. React just mounts/disposes it.
  */
 export class LogoEngine {
   private renderer: THREE.WebGLRenderer
   private scene = new THREE.Scene()
   private camera: THREE.PerspectiveCamera
   private group: THREE.Group | null = null
-  private atelier: LogoMaterials | null = null
-  private obsidian: LogoMaterials | null = null
-  private mode: MaterialMode = 'atelier'
+  private materials: LogoMaterials | null = null
 
   private hemi: THREE.HemisphereLight
   private dir: THREE.DirectionalLight
-  private redLight: THREE.PointLight
-  private whiteLight: THREE.PointLight
 
   private raf = 0
   private prev = performance.now()
@@ -56,20 +47,14 @@ export class LogoEngine {
     this.hemi = new THREE.HemisphereLight(0xfff8ec, 0xcfc5b2, 1.1)
     this.dir = new THREE.DirectionalLight(0xffffff, 1.6)
     this.dir.position.set(1.5, 2, 2.5)
-    this.redLight = new THREE.PointLight(0xe8232b, 30, 12)
-    this.redLight.position.set(-2.2, 1.2, 1.8)
-    this.whiteLight = new THREE.PointLight(0xffffff, 22, 12)
-    this.whiteLight.position.set(2.4, -0.8, 2.0)
-    this.scene.add(this.hemi, this.dir, this.redLight, this.whiteLight)
+    this.scene.add(this.hemi, this.dir)
   }
 
-  async load(initialMode: MaterialMode) {
-    const [group, env] = await Promise.all([loadLogo(), loadEnvMap(this.renderer)])
+  async load() {
+    const group = await loadLogo()
     if (this.disposed) return
-    const envMap = env ?? new THREE.PMREMGenerator(this.renderer).fromScene(new RoomEnvironment(), 0.04).texture
 
-    this.atelier = makePencilMaterials()
-    this.obsidian = makeGlassMaterials(envMap)
+    this.materials = makePencilMaterials()
     this.group = group
 
     // calibrate: scale so rendered height = HEIGHT_FRAC of viewport, offset for CENTER_Y
@@ -79,34 +64,19 @@ export class LogoEngine {
     if (size.y > 0) group.scale.setScalar((CALIB.HEIGHT_FRAC * visH) / size.y)
     group.position.y = (0.5 - CALIB.CENTER_Y) * visH
 
+    const set = this.materials
+    group.traverse((o) => {
+      if ((o as THREE.Mesh).isMesh) {
+        const mesh = o as THREE.Mesh
+        mesh.material = set[mesh.name as keyof LogoMaterials] || set['logo-black']
+      }
+    })
+
     this.scene.add(group)
-    this.setMaterialMode(initialMode)
     this.resize()
     this.attach()
     this.prev = performance.now()
     this.raf = requestAnimationFrame(this.tick)
-  }
-
-  setMaterialMode(mode: MaterialMode) {
-    this.mode = mode
-    const set = mode === 'atelier' ? this.atelier : this.obsidian
-    if (this.group && set) {
-      this.group.traverse((o) => {
-        if ((o as THREE.Mesh).isMesh) {
-          const mesh = o as THREE.Mesh
-          mesh.material = set[mesh.name as keyof LogoMaterials] || set['logo-black']
-        }
-      })
-    }
-    const atel = mode === 'atelier'
-    this.hemi.intensity = atel ? 1.1 : 0.05
-    this.dir.intensity = atel ? 1.6 : 0.25
-    this.redLight.intensity = atel ? 0 : 30
-    this.whiteLight.intensity = atel ? 0 : 22
-  }
-
-  getMode() {
-    return this.mode
   }
 
   getMesh() {
@@ -179,12 +149,6 @@ export class LogoEngine {
     this.tilt.z += (this.tilt.tz - this.tilt.z) * 0.06
     if (this.group) this.group.rotation.set(this.tilt.x, this.spinY, this.tilt.z)
 
-    // Obsidian key light alternates white ↔ gold on a ~6 s cycle (owner request, spec §7)
-    if (this.mode === 'obsidian') {
-      const lp = (Math.sin((t * 0.001 * Math.PI) / 3) + 1) / 2
-      this.whiteLight.color.copy(LIGHT_WHITE).lerp(LIGHT_GOLD, lp)
-    }
-
     this.renderer.render(this.scene, this.camera)
     this.raf = requestAnimationFrame(this.tick)
   }
@@ -208,9 +172,7 @@ export class LogoEngine {
       const m = o as THREE.Mesh
       if (m.isMesh) m.geometry?.dispose()
     })
-    ;[this.atelier, this.obsidian].forEach((set) => {
-      if (set) Object.values(set).forEach((m) => m.dispose())
-    })
+    if (this.materials) Object.values(this.materials).forEach((m) => m.dispose())
     this.renderer.dispose()
   }
 }

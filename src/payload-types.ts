@@ -676,29 +676,11 @@ export interface SiteSetting {
     manifesto?: string | null;
     archive?: string | null;
   };
-  /**
-   * Appearance switch pill labels
-   */
-  switchLabels?: {
-    atelier?: string | null;
-    obsidian?: string | null;
-  };
-  /**
-   * Invitation band under the hero, per current appearance
-   */
-  invitationCopy?: {
-    toObsidian?: string | null;
-    toAtelier?: string | null;
-  };
   archiveCountTemplate?: string | null;
   seo?: {
     title?: string | null;
     description?: string | null;
   };
-  /**
-   * Owner kill-switch: when off, the appearance switch uses a plain 0.4s crossfade instead of the light-burst sequence
-   */
-  transitionEnabled?: boolean | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -725,18 +707,6 @@ export interface SiteSettingsSelect<T extends boolean = true> {
         manifesto?: T;
         archive?: T;
       };
-  switchLabels?:
-    | T
-    | {
-        atelier?: T;
-        obsidian?: T;
-      };
-  invitationCopy?:
-    | T
-    | {
-        toObsidian?: T;
-        toAtelier?: T;
-      };
   archiveCountTemplate?: T;
   seo?:
     | T
@@ -744,7 +714,6 @@ export interface SiteSettingsSelect<T extends boolean = true> {
         title?: T;
         description?: T;
       };
-  transitionEnabled?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

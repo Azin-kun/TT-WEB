@@ -17,7 +17,6 @@ const run = async () => {
   console.log(JSON.stringify({
     counts,
     siteName: settings?.siteName,
-    switchLabels: settings?.switchLabels,
     homeTitleId: homeId.docs[0]?.title,
     homeBlocks: (homeId.docs[0]?.layout || []).map((b: any) => b.blockType),
   }, null, 2))

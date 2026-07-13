@@ -1,12 +1,12 @@
 /* ============================================================
-   TAMPA TARUNO — Dual-Appearance Design Tokens (Z4)
-   Spec: _PLAN/TAMPA-TARUNO-DUAL-APPEARANCE-DESIGN.md (§3, §8, §10)
-   Usage: <html data-appearance="atelier"> (default on landing)
-          <html data-appearance="obsidian">
-   Components must read ONLY these tokens — no per-appearance forks.
+   TAMPA TARUNO — Design Tokens (Atelier)
+   Spec: _PLAN/TAMPA-TARUNO-DUAL-APPEARANCE-DESIGN.md (§3)
+   Components must read ONLY these tokens.
    ============================================================ */
 
 :root {
+  color-scheme: light;
+
   /* --- Brand constants (pixel-sampled 2026-07-12) --- */
   --brand-red: #830401;        /* avg of 17,292 px, LOGO colored.png */
   --brand-black: #000000;
@@ -34,23 +34,8 @@
   --z-content: 1;
   --z-logo-theatre: 2;
   --z-header: 10;
-  --z-switch: 11;
-  --z-transition-overlay: 100;
 
-  /* --- Appearance-switch transition phases (Atelier→Obsidian, §8) --- */
-  --tr-blackout: 250ms;
-  --tr-burst: 700ms;      /* starts at 250ms */
-  --tr-morph: 600ms;      /* starts at 550ms */
-  --tr-bg-rise: 650ms;    /* starts at 950ms */
-  --tr-reskin: 600ms;     /* starts at 1200ms; total lock 1800ms */
-  --tr-reverse-total: 900ms;
-  --tr-reduced: 400ms;    /* prefers-reduced-motion: plain crossfade */
-}
-
-/* ================= APPEARANCE 1 — ATELIER ==================
-   Pencil sketch on brightened paper. Motion: literary. */
-[data-appearance="atelier"] {
-  color-scheme: light;
+  /* --- Palette: pencil sketch on brightened paper --- */
   --bg: #F6F1E7;          /* paper (A4 avg #EADFD2 brightened) */
   --bg-deep: #EAE3D5;     /* alt sections, soft shadows */
   --fg: #2B2A27;          /* graphite */
@@ -69,33 +54,5 @@
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* ================ APPEARANCE 2 — OBSIDIAN ==================
-   Futuristic glass & light on void black. Motion: ignition. */
-[data-appearance="obsidian"] {
-  color-scheme: dark;
-  --bg: #060607;          /* void */
-  --bg-deep: #060607;
-  --fg: #F4F4F6;          /* white light */
-  --muted: #9CA0A8;       /* silver mist */
-  --accent: #E8232B;      /* signal red: glow, links, active */
-  --accent-deep: var(--brand-red); /* glass tint, gradient stops */
-  --light-gold: #FFD34D;  /* LIGHT EFFECTS ONLY (alternates with white on a ~6s cycle
-                             in the bg shader + glass lighting) — never for UI text */
-  --highlight: #FFFFFF;
-  --panel: #121215;       /* carbon */
-  --line: rgba(244, 244, 246, 0.12);
-  --selection-bg: rgba(232, 35, 43, 0.30);
-
-  /* motion flavor */
-  --dur-fast: 0.6s;
-  --dur-base: 0.8s;
-  --dur-slow: 1.0s;
-  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);        /* expo.out-like */
-}
-
-/* Contrast (WCAG): atelier fg/bg ≈ 12.9:1 · obsidian fg/bg ≈ 19:1.
-   --accent on --bg (obsidian) ≈ 5.5:1 → body-text OK; never use
-   --accent for text below 4.5:1 contexts in atelier (≈ 7.4:1, fine).
-   Reduced motion: app sets all --dur-* to 0.01s and uses --tr-reduced
-   for the appearance switch (no burst sequence). */
+/* Contrast (WCAG): fg/bg ≈ 12.9:1. Reduced motion: app sets all
+   --dur-* to 0.01s. */

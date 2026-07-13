@@ -46,11 +46,8 @@ const run = async () => {
         { label: 'LinkedIn', url: 'https://linkedin.com/' },
       ],
       navLabels: { home: 'Homepage', manifesto: 'Manifesto', archive: 'Archive' },
-      switchLabels: { atelier: 'Atelier', obsidian: 'Obsidian' },
-      invitationCopy: { toObsidian: 'See the dark side', toAtelier: 'Back to the drawing board' },
       archiveCountTemplate: '{{count}} projects in the archive',
       seo: { title: 'TAMPA TARUNO', description: lorem[0] },
-      transitionEnabled: true,
     },
   })
   await payload.updateGlobal({
@@ -59,8 +56,6 @@ const run = async () => {
     data: {
       locationLine: 'Kota Lorem — GMT+7',
       navLabels: { home: 'Beranda', manifesto: 'Manifesto', archive: 'Arsip' },
-      switchLabels: { atelier: 'Atelier', obsidian: 'Obsidian' },
-      invitationCopy: { toObsidian: 'Lihat sisi gelap', toAtelier: 'Kembali ke papan gambar' },
       archiveCountTemplate: '{{count}} proyek dalam arsip',
       seo: { title: 'TAMPA TARUNO', description: id(lorem[0]) },
     },
