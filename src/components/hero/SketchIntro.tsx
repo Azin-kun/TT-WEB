@@ -70,6 +70,7 @@ export function SketchIntro({
     >
       <video
         ref={videoRef}
+        className="sketch-intro-video"
         muted
         playsInline
         preload="auto"
@@ -80,6 +81,23 @@ export function SketchIntro({
         <source src="/media/sketch-draw-16x9.webm" type="video/webm" />
         <source src="/media/sketch-draw-16x9.mp4" type="video/mp4" />
       </video>
+      <style>{`
+        @media (max-width: 639px) {
+          /* Match the 3D logo's mobile scale (MOBILE_HEIGHT_FRAC / HEIGHT_FRAC
+             = 0.24 / 0.453) so the video-to-mesh handoff doesn't jump size. */
+          .sketch-intro-video {
+            position: absolute !important;
+            top: 53.4% !important;
+            left: 50% !important;
+            width: calc(100svh * 0.9418) !important;
+            height: calc(100svh * 0.5298) !important;
+            max-width: none !important;
+            max-height: none !important;
+            transform: translate(-50%, -50%);
+            object-fit: contain !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }

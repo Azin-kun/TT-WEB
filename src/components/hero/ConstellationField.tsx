@@ -16,7 +16,7 @@ import { CALIB } from '../../lib/three/calibration'
  */
 
 const LOGO_ASPECT = 1532 / 1427 // from _ASSETS/logo/logo-bbox.json
-const LOGO_PAD = 24
+const LOGO_PAD = 8 // tight — strings should read as touching the logo, not orbiting a phantom margin
 
 // Reference-site physics constants (plan §10.3–10.4)
 const ATTRACT_R = 380
@@ -127,7 +127,11 @@ export function ConstellationField({
       canvas.style.height = `${H}px`
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-      const lh = CALIB.HEIGHT_FRAC * H
+      mobile = window.innerWidth < 640
+      // mirror LogoEngine's mobile-vs-desktop scale so the string-anchor box
+      // matches the 3D logo's ACTUAL rendered size, not the desktop one
+      const heightFrac = mobile ? CALIB.MOBILE_HEIGHT_FRAC : CALIB.HEIGHT_FRAC
+      const lh = heightFrac * H
       logoRect = {
         cx: CALIB.CENTER_X * W,
         cy: CALIB.CENTER_Y * H,
@@ -154,7 +158,6 @@ export function ConstellationField({
         avoidRects.push({ cx: W / 2, cy: (r.height - sec.top) / 2, hw: W / 2, hh: Math.max(r.bottom - sec.top, 0) / 2 + 8 })
       }
 
-      mobile = window.innerWidth < 640
       const maxWords = mobile ? MOBILE_MAX_WORDS : states.length
       states.forEach((s, i) => {
         s.visible = i < maxWords
