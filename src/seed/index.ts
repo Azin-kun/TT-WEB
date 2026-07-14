@@ -137,8 +137,8 @@ const run = async () => {
       layout: [
         {
           blockType: 'hero',
-          line1: 'Lorem ipsum dolor sit amet',
-          line2: 'Consectetur adipiscing elit, sed do eiusmod tempor',
+          line1: 'Mitreka Satata',
+          line2: 'Jer Basuki Mawa Bea',
           locationLine: 'Lorem ipsum — GMT+7',
           scrollCue: 'Scroll to explore',
           constellationEnabled: true,
@@ -159,8 +159,8 @@ const run = async () => {
   const created = await payload.findByID({ collection: 'pages', id: home.id, depth: 0 })
   const idValues: Record<string, Record<string, unknown>> = {
     hero: {
-      line1: 'Lorem ipsum dolor sit amet (ID)',
-      line2: 'Consectetur adipiscing elit, sed do eiusmod (ID)',
+      line1: 'Mitreka Satata',
+      line2: 'Jer Basuki Mawa Bea',
       locationLine: 'Kota Lorem — GMT+7',
       scrollCue: 'Gulir untuk menjelajah',
       floatingWords: [

@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { gsap } from 'gsap'
+import { SplitText } from 'gsap/SplitText'
 import { LogoStage } from '../hero/LogoStage'
 import { ConstellationField } from '../hero/ConstellationField'
+
+gsap.registerPlugin(SplitText)
 
 type Props = {
   line1: string
@@ -15,8 +18,9 @@ type Props = {
 }
 
 // No preloader — the hero IS the arrival moment (spec base §1.2/§3.2).
-// Lines mask-reveal on load (<=0.9s); the scroll cue fades permanently on
-// the visitor's first scroll.
+// The two headline lines reveal word-by-word, hold, then dissolve entirely
+// so the constellation can roam the freed space once they're gone (spec:
+// SYNAPSER plan §10 revision, 2026-07-14).
 export function HeroBlock({
   line1,
   line2,
@@ -25,8 +29,8 @@ export function HeroBlock({
   constellationEnabled = true,
   floatingWords = [],
 }: Props) {
-  const line1Ref = useRef<HTMLDivElement>(null)
-  const line2Ref = useRef<HTMLDivElement>(null)
+  const line1Ref = useRef<HTMLHeadingElement>(null)
+  const line2Ref = useRef<HTMLParagraphElement>(null)
   const metaRef = useRef<HTMLDivElement>(null)
   const cueRef = useRef<HTMLSpanElement>(null)
   const [stageLive, setStageLive] = useState(false)
@@ -34,20 +38,67 @@ export function HeroBlock({
 
   useEffect(() => {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const targets = [line1Ref.current, line2Ref.current, metaRef.current].filter(Boolean)
+
+    gsap.set(metaRef.current, { yPercent: 100 })
+    gsap.to(metaRef.current, { yPercent: 0, duration: 0.75, ease: 'power3.out', delay: 0.1 })
+
     if (reduced) {
-      gsap.set(targets, { clearProps: 'all' })
-    } else {
-      gsap.set(targets, { yPercent: 100 })
-      gsap.to(targets, {
-        yPercent: 0,
-        duration: 0.75,
-        stagger: 0.08,
-        ease: 'power3.out',
-        delay: 0.1,
-      })
+      gsap.set([line1Ref.current, line2Ref.current], { clearProps: 'all' })
+      return
     }
 
+    // Desktop: 3s to fully reveal, hold, dissolve starting at 6s.
+    // Mobile: 2.2s to fully reveal, hold 3s, dissolve starting at 5.2s.
+    const isMobile = window.innerWidth < 640
+    const revealDur = isMobile ? 2.2 : 3.0
+    const holdDur = 3.0
+    const disappearAt = revealDur + holdDur
+
+    const splits = ([line1Ref.current, line2Ref.current].filter((el) => el !== null) as (
+      | HTMLHeadingElement
+      | HTMLParagraphElement
+    )[]).map((el) => new SplitText(el, { type: 'words' }))
+
+    gsap.set(splits.flatMap((s) => s.words), { opacity: 0, yPercent: 70 })
+
+    const tl = gsap.timeline()
+    splits.forEach((s) => {
+      tl.to(
+        s.words,
+        {
+          opacity: 1,
+          yPercent: 0,
+          duration: 0.55,
+          ease: 'power2.out',
+          stagger: { amount: Math.max(0.15, revealDur - 0.55) },
+        },
+        0,
+      )
+    })
+    tl.to(
+      [line1Ref.current, line2Ref.current].filter(Boolean),
+      {
+        opacity: 0,
+        duration: 0.9,
+        ease: 'power2.out',
+        onComplete: () => {
+          ;[line1Ref.current, line2Ref.current].forEach((el) => {
+            if (el) el.style.display = 'none'
+          })
+          // headline no longer occupies space — let the constellation reclaim it
+          window.dispatchEvent(new Event('resize'))
+        },
+      },
+      disappearAt,
+    )
+
+    return () => {
+      tl.kill()
+      splits.forEach((s) => s.revert())
+    }
+  }, [])
+
+  useEffect(() => {
     const onScroll = () => {
       gsap.to(cueRef.current, { opacity: 0, duration: 0.4, ease: 'power1.out' })
       window.removeEventListener('scroll', onScroll)
@@ -60,6 +111,52 @@ export function HeroBlock({
     <section style={{ position: 'relative', minHeight: '100svh', overflow: 'hidden' }}>
       <LogoStage onLive={onStageLive} />
       <ConstellationField words={floatingWords} enabled={constellationEnabled} active={stageLive} />
+
+      <div
+        className="hero-headline-overlay"
+        style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none' }}
+      >
+        <div className="tt-container" style={{ position: 'relative', height: '100%' }}>
+          <h1
+            ref={line1Ref}
+            className="tt-display hero-text1"
+            data-constellation-avoid
+            style={{
+              position: 'absolute',
+              top: 'clamp(96px, 14vh, 140px)',
+              left: 0,
+              margin: 0,
+              maxWidth: 'min(16ch, 30vw)',
+              color: '#333333',
+              fontSize: 'var(--text-h1)',
+              lineHeight: 'var(--leading-display)',
+            }}
+          >
+            {line1}
+          </h1>
+          {line2 ? (
+            <p
+              ref={line2Ref}
+              className="hero-text2"
+              data-constellation-avoid
+              style={{
+                position: 'absolute',
+                bottom: 'calc(8vh + 4.5rem)',
+                right: 0,
+                margin: 0,
+                maxWidth: 'min(20ch, 27vw)',
+                textAlign: 'right',
+                color: 'var(--accent)',
+                fontSize: 'var(--text-manifesto)',
+                lineHeight: 'var(--leading-manifesto)',
+              }}
+            >
+              {line2}
+            </p>
+          ) : null}
+        </div>
+      </div>
+
       <div
         className="tt-container"
         style={{
@@ -73,42 +170,9 @@ export function HeroBlock({
           pointerEvents: 'none',
         }}
       >
-        <div style={{ overflow: 'hidden' }}>
-          <h1
-            ref={line1Ref}
-            className="tt-display"
-            data-constellation-avoid
-            style={{
-              fontSize: 'var(--text-h1)',
-              lineHeight: 'var(--leading-display)',
-              margin: 0,
-              maxWidth: 'min(16ch, 30vw)',
-            }}
-          >
-            {line1}
-          </h1>
-        </div>
-        {line2 ? (
-          <div style={{ overflow: 'hidden', marginTop: '0.4em' }}>
-            <p
-              ref={line2Ref}
-              data-constellation-avoid
-              style={{
-                fontSize: 'var(--text-manifesto)',
-                lineHeight: 'var(--leading-manifesto)',
-                color: 'var(--muted)',
-                maxWidth: 'min(20ch, 27vw)',
-                margin: 0,
-              }}
-            >
-              {line2}
-            </p>
-          </div>
-        ) : null}
         <div
           ref={metaRef}
-          data-constellation-avoid
-          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: '2rem' }}
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}
         >
           <span style={{ fontSize: '0.875rem', color: 'var(--muted)' }}>{locationLine}</span>
           <span ref={cueRef} style={{ fontSize: '0.8125rem', color: 'var(--accent)' }}>
@@ -116,6 +180,25 @@ export function HeroBlock({
           </span>
         </div>
       </div>
+
+      <style>{`
+        @media (max-width: 639px) {
+          .hero-headline-overlay .tt-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75em;
+            text-align: center;
+          }
+          .hero-text1,
+          .hero-text2 {
+            position: static !important;
+            max-width: 80vw !important;
+            text-align: center !important;
+          }
+        }
+      `}</style>
     </section>
   )
 }
