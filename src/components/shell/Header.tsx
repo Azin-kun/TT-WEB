@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { SiteSetting } from '../../payload-types'
 import type { Locale } from '../../lib/i18n'
 import { LocaleToggle } from './LocaleToggle'
+import { MobileNav } from './MobileNav'
 
 export function Header({ locale, settings }: { locale: Locale; settings: SiteSetting }) {
   const nav = [
@@ -44,6 +45,9 @@ export function Header({ locale, settings }: { locale: Locale; settings: SiteSet
           <LocaleToggle locale={locale} />
         </div>
       </div>
+
+      <MobileNav nav={nav} />
+
       <style>{`
         @media (max-width: 560px) {
           .tt-header-nav .label { display: none; }
