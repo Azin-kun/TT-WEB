@@ -31,6 +31,10 @@ export async function RenderBlocks({
                   line2={block.line2}
                   locationLine={block.locationLine}
                   scrollCue={block.scrollCue}
+                  constellationEnabled={block.constellationEnabled ?? true}
+                  floatingWords={(block.floatingWords || [])
+                    .map((w) => w.word)
+                    .filter((w): w is string => !!w)}
                 />
               )
 

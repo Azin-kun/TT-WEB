@@ -77,9 +77,13 @@ migration in production). No other file references the DB adapter.
 - **Collections:** `works`, `services`, `manifesto-statements`, `pages`
   (block-based: Hero, ManifestoStrip, FeaturedWorks, ServicesRows,
   ArchiveTeaser, ContactMailto, RichText, MediaFull), `media`, `users`.
-- **Global:** `site-settings` (nav labels, appearance-switch labels,
-  invitation copy, contact info, `transitionEnabled` kill-switch — flip this
-  off to force a plain 0.4s crossfade instead of the light-burst).
+  - **Hero block** also carries `floatingWords` (localized array, up to 18
+    short words) and `constellationEnabled` (checkbox) — the "margin notes"
+    constellation tethered to the 3D logo by pencil strings. Editable per
+    locale in `/admin`; the hero looks complete without it if disabled/empty.
+- **Global:** `site-settings` (nav labels, contact info). The site now ships
+  a single Atelier appearance (Obsidian removed 2026-07-13) — no
+  appearance-switch labels or transition kill-switch anymore.
 - All text-bearing fields are `localized: true` (`en` default, `id`
   secondary). A page's block **layout** (which blocks, in what order) is
   shared across locales; the text *inside* each block is per-locale.

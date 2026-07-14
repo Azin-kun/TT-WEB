@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { SketchIntro } from './SketchIntro'
 
 // next/dynamic(ssr:false) keeps three.js out of the base bundle.
@@ -15,9 +15,14 @@ const LogoCanvas = dynamic(() => import('../three/LogoCanvas'), {
  * top. The video crossfades out (opacity in SketchIntro) once it ends; the
  * canvas fades in once its mesh is ready, so the handoff is seamless (spec §7).
  */
-export function LogoStage() {
+export function LogoStage({ onLive }: { onLive?: () => void }) {
   const [introDone, setIntroDone] = useState(false)
   const [canvasReady, setCanvasReady] = useState(false)
+
+  // signal consumers (constellation entrance) once the 3D logo is truly on screen
+  useEffect(() => {
+    if (introDone && canvasReady) onLive?.()
+  }, [introDone, canvasReady, onLive])
 
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>

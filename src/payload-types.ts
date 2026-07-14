@@ -260,6 +260,19 @@ export interface Page {
             line2?: string | null;
             locationLine?: string | null;
             scrollCue?: string | null;
+            /**
+             * Floating "margin note" words tethered to the logo by pencil strings (decorative; hero looks complete without them)
+             */
+            constellationEnabled?: boolean | null;
+            /**
+             * 8–18 short words orbiting the logo; order = priority (small screens show only the first 8)
+             */
+            floatingWords?:
+              | {
+                  word: string;
+                  id?: string | null;
+                }[]
+              | null;
             id?: string | null;
             blockName?: string | null;
             blockType: 'hero';
@@ -549,6 +562,13 @@ export interface PagesSelect<T extends boolean = true> {
               line2?: T;
               locationLine?: T;
               scrollCue?: T;
+              constellationEnabled?: T;
+              floatingWords?:
+                | T
+                | {
+                    word?: T;
+                    id?: T;
+                  };
               id?: T;
               blockName?: T;
             };

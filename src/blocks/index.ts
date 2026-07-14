@@ -11,6 +11,26 @@ export const HeroBlock: Block = {
     { name: 'line2', type: 'text', localized: true },
     { name: 'locationLine', type: 'text', localized: true },
     { name: 'scrollCue', type: 'text', localized: true },
+    {
+      name: 'constellationEnabled',
+      type: 'checkbox',
+      defaultValue: true,
+      admin: {
+        description:
+          'Floating "margin note" words tethered to the logo by pencil strings (decorative; hero looks complete without them)',
+      },
+    },
+    {
+      name: 'floatingWords',
+      type: 'array',
+      localized: true,
+      maxRows: 18,
+      admin: {
+        description:
+          '8–18 short words orbiting the logo; order = priority (small screens show only the first 8)',
+      },
+      fields: [{ name: 'word', type: 'text', required: true, maxLength: 24 }],
+    },
   ],
 }
 

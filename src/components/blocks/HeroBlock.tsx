@@ -1,24 +1,36 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { LogoStage } from '../hero/LogoStage'
+import { ConstellationField } from '../hero/ConstellationField'
 
 type Props = {
   line1: string
   line2?: string | null
   locationLine?: string | null
   scrollCue?: string | null
+  constellationEnabled?: boolean
+  floatingWords?: string[]
 }
 
 // No preloader — the hero IS the arrival moment (spec base §1.2/§3.2).
 // Lines mask-reveal on load (<=0.9s); the scroll cue fades permanently on
 // the visitor's first scroll.
-export function HeroBlock({ line1, line2, locationLine, scrollCue }: Props) {
+export function HeroBlock({
+  line1,
+  line2,
+  locationLine,
+  scrollCue,
+  constellationEnabled = true,
+  floatingWords = [],
+}: Props) {
   const line1Ref = useRef<HTMLDivElement>(null)
   const line2Ref = useRef<HTMLDivElement>(null)
   const metaRef = useRef<HTMLDivElement>(null)
   const cueRef = useRef<HTMLSpanElement>(null)
+  const [stageLive, setStageLive] = useState(false)
+  const onStageLive = useCallback(() => setStageLive(true), [])
 
   useEffect(() => {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -46,7 +58,8 @@ export function HeroBlock({ line1, line2, locationLine, scrollCue }: Props) {
 
   return (
     <section style={{ position: 'relative', minHeight: '100svh', overflow: 'hidden' }}>
-      <LogoStage />
+      <LogoStage onLive={onStageLive} />
+      <ConstellationField words={floatingWords} enabled={constellationEnabled} active={stageLive} />
       <div
         className="tt-container"
         style={{
@@ -64,6 +77,7 @@ export function HeroBlock({ line1, line2, locationLine, scrollCue }: Props) {
           <h1
             ref={line1Ref}
             className="tt-display"
+            data-constellation-avoid
             style={{
               fontSize: 'var(--text-h1)',
               lineHeight: 'var(--leading-display)',
@@ -78,6 +92,7 @@ export function HeroBlock({ line1, line2, locationLine, scrollCue }: Props) {
           <div style={{ overflow: 'hidden', marginTop: '0.4em' }}>
             <p
               ref={line2Ref}
+              data-constellation-avoid
               style={{
                 fontSize: 'var(--text-manifesto)',
                 lineHeight: 'var(--leading-manifesto)',
@@ -90,7 +105,11 @@ export function HeroBlock({ line1, line2, locationLine, scrollCue }: Props) {
             </p>
           </div>
         ) : null}
-        <div ref={metaRef} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: '2rem' }}>
+        <div
+          ref={metaRef}
+          data-constellation-avoid
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: '2rem' }}
+        >
           <span style={{ fontSize: '0.875rem', color: 'var(--muted)' }}>{locationLine}</span>
           <span ref={cueRef} style={{ fontSize: '0.8125rem', color: 'var(--accent)' }}>
             ↓ {scrollCue}

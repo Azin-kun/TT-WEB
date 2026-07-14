@@ -141,6 +141,11 @@ const run = async () => {
           line2: 'Consectetur adipiscing elit, sed do eiusmod tempor',
           locationLine: 'Lorem ipsum — GMT+7',
           scrollCue: 'Scroll to explore',
+          constellationEnabled: true,
+          floatingWords: [
+            'sketch', 'craft', 'design', 'identity', 'motion', 'detail',
+            'story', 'precision', 'digital', 'atelier', 'jakarta', 'brand',
+          ].map((word) => ({ word })),
         },
         { blockType: 'manifestoStrip' },
         { blockType: 'featuredWorks', heading: 'Selected works' },
@@ -152,12 +157,16 @@ const run = async () => {
   })
   // second-locale values for the SAME blocks (match by block id)
   const created = await payload.findByID({ collection: 'pages', id: home.id, depth: 0 })
-  const idValues: Record<string, Record<string, string>> = {
+  const idValues: Record<string, Record<string, unknown>> = {
     hero: {
       line1: 'Lorem ipsum dolor sit amet (ID)',
       line2: 'Consectetur adipiscing elit, sed do eiusmod (ID)',
       locationLine: 'Kota Lorem — GMT+7',
       scrollCue: 'Gulir untuk menjelajah',
+      floatingWords: [
+        'sketsa', 'kriya', 'desain', 'identitas', 'gerak', 'detail',
+        'cerita', 'presisi', 'digital', 'atelier', 'jakarta', 'merek',
+      ].map((word) => ({ word })),
     },
     featuredWorks: { heading: 'Karya pilihan' },
     servicesRows: { heading: 'Layanan' },
