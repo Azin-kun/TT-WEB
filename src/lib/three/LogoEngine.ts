@@ -58,10 +58,13 @@ export class LogoEngine {
     this.group = group
 
     // calibrate: scale so rendered height = HEIGHT_FRAC of viewport, offset for CENTER_Y
+    // (narrow/portrait viewports use a smaller MOBILE_HEIGHT_FRAC — see calibration.ts)
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 640
+    const heightFrac = isMobile ? CALIB.MOBILE_HEIGHT_FRAC : CALIB.HEIGHT_FRAC
     const visH = visibleHeight()
     const box = new THREE.Box3().setFromObject(group)
     const size = box.getSize(new THREE.Vector3())
-    if (size.y > 0) group.scale.setScalar((CALIB.HEIGHT_FRAC * visH) / size.y)
+    if (size.y > 0) group.scale.setScalar((heightFrac * visH) / size.y)
     group.position.y = (0.5 - CALIB.CENTER_Y) * visH
 
     const set = this.materials

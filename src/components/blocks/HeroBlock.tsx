@@ -35,6 +35,11 @@ export function HeroBlock({
   const cueRef = useRef<HTMLSpanElement>(null)
   const [stageLive, setStageLive] = useState(false)
   const onStageLive = useCallback(() => setStageLive(true), [])
+  // Mobile: the sketch video/3D logo/constellation stay hidden until both
+  // headline lines finish dissolving. Starts true (matches server render —
+  // avoids a hydration mismatch) and is closed for mobile inside the entrance
+  // effect below, within the same tick as mount.
+  const [videoGate, setVideoGate] = useState(true)
 
   useEffect(() => {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -44,12 +49,14 @@ export function HeroBlock({
 
     if (reduced) {
       gsap.set([line1Ref.current, line2Ref.current], { clearProps: 'all' })
+      setVideoGate(true) // no disappear event will fire — don't leave mobile gated shut
       return
     }
 
     // Desktop: 3s to fully reveal, hold, dissolve starting at 6s.
     // Mobile: 2.2s to fully reveal, hold 3s, dissolve starting at 5.2s.
     const isMobile = window.innerWidth < 640
+    if (isMobile) setVideoGate(false)
     const revealDur = isMobile ? 2.2 : 3.0
     const holdDur = 3.0
     const disappearAt = revealDur + holdDur
@@ -57,20 +64,20 @@ export function HeroBlock({
     const splits = ([line1Ref.current, line2Ref.current].filter((el) => el !== null) as (
       | HTMLHeadingElement
       | HTMLParagraphElement
-    )[]).map((el) => new SplitText(el, { type: 'words' }))
+    )[]).map((el) => new SplitText(el, { type: 'chars' }))
 
-    gsap.set(splits.flatMap((s) => s.words), { opacity: 0, yPercent: 70 })
+    gsap.set(splits.flatMap((s) => s.chars), { opacity: 0, yPercent: 70 })
 
     const tl = gsap.timeline()
     splits.forEach((s) => {
       tl.to(
-        s.words,
+        s.chars,
         {
           opacity: 1,
           yPercent: 0,
-          duration: 0.55,
+          duration: 0.35,
           ease: 'power2.out',
-          stagger: { amount: Math.max(0.15, revealDur - 0.55) },
+          stagger: { amount: Math.max(0.15, revealDur - 0.35) },
         },
         0,
       )
@@ -87,6 +94,8 @@ export function HeroBlock({
           })
           // headline no longer occupies space — let the constellation reclaim it
           window.dispatchEvent(new Event('resize'))
+          // mobile: only now let the sketch video / logo / constellation appear
+          setVideoGate(true)
         },
       },
       disappearAt,
@@ -109,7 +118,7 @@ export function HeroBlock({
 
   return (
     <section style={{ position: 'relative', minHeight: '100svh', overflow: 'hidden' }}>
-      <LogoStage onLive={onStageLive} />
+      <LogoStage onLive={onStageLive} allowPlay={videoGate} />
       <ConstellationField words={floatingWords} enabled={constellationEnabled} active={stageLive} />
 
       <div
