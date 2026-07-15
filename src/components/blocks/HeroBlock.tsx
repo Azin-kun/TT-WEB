@@ -53,13 +53,12 @@ export function HeroBlock({
       return
     }
 
-    // Desktop: 3s to fully reveal, hold, dissolve starting at 6s.
-    // Mobile: 2.2s to fully reveal, hold 3s, dissolve starting at 5.2s.
+    // Desktop: 3s to fully reveal, then dissolve immediately (no hold).
+    // Mobile: 2.2s to fully reveal, then dissolve immediately.
     const isMobile = window.innerWidth < 640
     setVideoGate(false)
     const revealDur = isMobile ? 2.2 : 3.0
-    const holdDur = 3.0
-    const disappearAt = revealDur + holdDur
+    const disappearAt = revealDur
 
     const splits = ([line1Ref.current, line2Ref.current].filter((el) => el !== null) as (
       | HTMLHeadingElement
