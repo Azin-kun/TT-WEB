@@ -35,10 +35,10 @@ export function HeroBlock({
   const cueRef = useRef<HTMLSpanElement>(null)
   const [stageLive, setStageLive] = useState(false)
   const onStageLive = useCallback(() => setStageLive(true), [])
-  // Mobile: the sketch video/3D logo/constellation stay hidden until both
-  // headline lines finish dissolving. Starts true (matches server render —
-  // avoids a hydration mismatch) and is closed for mobile inside the entrance
-  // effect below, within the same tick as mount.
+  // The sketch video/3D logo/constellation stay hidden until both headline
+  // lines finish dissolving (desktop and mobile alike). Starts true (matches
+  // server render — avoids a hydration mismatch) and is closed inside the
+  // entrance effect below, within the same tick as mount.
   const [videoGate, setVideoGate] = useState(true)
 
   useEffect(() => {
@@ -56,7 +56,7 @@ export function HeroBlock({
     // Desktop: 3s to fully reveal, hold, dissolve starting at 6s.
     // Mobile: 2.2s to fully reveal, hold 3s, dissolve starting at 5.2s.
     const isMobile = window.innerWidth < 640
-    if (isMobile) setVideoGate(false)
+    setVideoGate(false)
     const revealDur = isMobile ? 2.2 : 3.0
     const holdDur = 3.0
     const disappearAt = revealDur + holdDur
@@ -94,7 +94,7 @@ export function HeroBlock({
           })
           // headline no longer occupies space — let the constellation reclaim it
           window.dispatchEvent(new Event('resize'))
-          // mobile: only now let the sketch video / logo / constellation appear
+          // only now let the sketch video / logo / constellation appear
           setVideoGate(true)
         },
       },
