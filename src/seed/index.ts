@@ -76,21 +76,36 @@ const run = async () => {
     })
   }
 
-  // --- services (structural names kept; capabilities lorem) ---
+  // --- services (structural names kept; tagline/description/capabilities lorem) ---
   const services = ['Brand Strategy', 'Interface Design', 'Immersive & Motion', 'Engineering']
+  const serviceIcons = ['strategy', 'grid', 'motion', 'code'] as const
+  const serviceCounts = [3, 2, 3, 2]
   for (let i = 0; i < services.length; i++) {
     const caps = (n: number, loc: (s: string) => string) =>
       Array.from({ length: 4 }, (_, k) => ({ item: loc(lorem[(i + k) % 6].slice(0, 42)) }))
     const doc = await payload.create({
       collection: 'services',
       locale: 'en',
-      data: { name: services[i], capabilities: caps(i, (s) => s), order: i },
+      data: {
+        name: services[i],
+        tagline: lorem[i % 6].slice(0, 56),
+        description: `${lorem[(i + 1) % 6]} ${lorem[(i + 2) % 6]}`.slice(0, 180),
+        capabilities: caps(i, (s) => s),
+        projectCount: serviceCounts[i],
+        icon: serviceIcons[i],
+        order: i,
+      },
     })
     await payload.update({
       collection: 'services',
       id: doc.id,
       locale: 'id',
-      data: { name: services[i], capabilities: caps(i, id) },
+      data: {
+        name: services[i],
+        tagline: id(lorem[i % 6].slice(0, 56)),
+        description: id(`${lorem[(i + 1) % 6]} ${lorem[(i + 2) % 6]}`.slice(0, 180)),
+        capabilities: caps(i, id),
+      },
     })
   }
 

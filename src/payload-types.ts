@@ -224,12 +224,28 @@ export interface Work {
 export interface Service {
   id: number;
   name: string;
+  /**
+   * Bold headline inside the expanded row (e.g. "Shaping identities that resonate and endure")
+   */
+  tagline?: string | null;
+  /**
+   * Paragraph inside the expanded row
+   */
+  description?: string | null;
   capabilities?:
     | {
         item: string;
         id?: string | null;
       }[]
     | null;
+  /**
+   * Shown as "003//" on the row (manual for now — works aren’t related to services yet)
+   */
+  projectCount?: number | null;
+  /**
+   * Stroke icon shown next to the service name
+   */
+  icon?: ('strategy' | 'grid' | 'motion' | 'code' | 'pen' | 'layers' | 'camera' | 'spark') | null;
   order?: number | null;
   updatedAt: string;
   createdAt: string;
@@ -525,12 +541,16 @@ export interface WorksSelect<T extends boolean = true> {
  */
 export interface ServicesSelect<T extends boolean = true> {
   name?: T;
+  tagline?: T;
+  description?: T;
   capabilities?:
     | T
     | {
         item?: T;
         id?: T;
       };
+  projectCount?: T;
+  icon?: T;
   order?: T;
   updatedAt?: T;
   createdAt?: T;

@@ -67,10 +67,15 @@ export async function RenderBlocks({
                 <ServicesRows
                   key={block.id}
                   heading={block.heading}
+                  archiveHref={`/${locale}/archive`}
                   services={services.map((s) => ({
                     id: s.id,
                     name: s.name,
+                    tagline: s.tagline,
+                    description: s.description,
                     capabilities: (s.capabilities || []).map((c) => c.item),
+                    projectCount: s.projectCount ?? 0,
+                    icon: s.icon ?? 'spark',
                   }))}
                 />
               )
