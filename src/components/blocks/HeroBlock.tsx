@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { LogoStage } from '../hero/LogoStage'
 import { ConstellationField } from '../hero/ConstellationField'
@@ -14,14 +14,40 @@ type Props = {
   floatingWords?: string[]
 }
 
+const TYPE_DUR_S = 4 // characters finish typing by this mark
+const HOLD_DUR_S = 2 // complete text stays put this long after typing finishes
+const DISMISS_AT_MS = (TYPE_DUR_S + HOLD_DUR_S) * 1000
+
+// Splits a line into per-character spans with a staggered animation-delay so
+// each line types itself out over TYPE_DUR_S seconds (CSS keyframes only —
+// no GSAP/SplitText involved, deliberately: a prior version used SplitText
+// here and it's suspected of throwing silently in some browsers, which left
+// the whole hero blank forever since downstream state never unblocked).
+function TypedLine({ text }: { text: string }) {
+  const chars = useMemo(() => text.split(''), [text])
+  return (
+    <>
+      {chars.map((ch, i) => (
+        <span
+          key={i}
+          className="hero-char"
+          style={{ animationDelay: `${(i / Math.max(1, chars.length - 1)) * TYPE_DUR_S}s` }}
+        >
+          {ch === ' ' ? ' ' : ch}
+        </span>
+      ))}
+    </>
+  )
+}
+
 // No preloader — the hero IS the arrival moment (spec base §1.2/§3.2).
-// Sequence: headline blur-reveals (CSS only — see .hero-text1/.hero-text2
-// keyframes below) *while* the sketch-draw video plays concurrently → video
-// ends and crossfades to the rotating 3D logo → constellation floating
-// words activate. The headline dissolves the moment the logo goes live,
-// freeing its space for the constellation. Nothing is gated behind a
-// "seen this session" flag, so the whole sequence replays every time the
-// hero remounts (e.g. navigating back from Manifesto/Archive).
+// Sequence: headline types itself out letter-by-letter (4s type, 2s hold —
+// see TYPE_DUR_S/HOLD_DUR_S) *while* the sketch-draw video plays
+// concurrently → video ends and crossfades to the rotating 3D logo →
+// constellation floating words activate. The headline dissolves at the 6s
+// mark regardless of video timing. Nothing is gated behind a "seen this
+// session" flag, so the whole sequence replays every time the hero remounts
+// (e.g. navigating back from Manifesto/Archive).
 export function HeroBlock({
   line1,
   line2,
@@ -33,25 +59,29 @@ export function HeroBlock({
   const metaRef = useRef<HTMLDivElement>(null)
   const cueRef = useRef<HTMLSpanElement>(null)
   const [stageLive, setStageLive] = useState(false)
+  const [headlineDismissed, setHeadlineDismissed] = useState(false)
   const onStageLive = useCallback(() => setStageLive(true), [])
 
   useEffect(() => {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (reduced) {
       gsap.set(metaRef.current, { clearProps: 'all' })
-      return
+      return // headline stays fully visible, no typing/dissolve animation
     }
     gsap.set(metaRef.current, { yPercent: 100 })
     gsap.to(metaRef.current, { yPercent: 0, duration: 0.75, ease: 'power3.out', delay: 0.1 })
+
+    const t = setTimeout(() => setHeadlineDismissed(true), DISMISS_AT_MS)
+    return () => clearTimeout(t)
   }, [])
 
   useEffect(() => {
-    if (!stageLive) return
+    if (!headlineDismissed) return
     // headline is dissolving (CSS transition below) — once it's clear of the
     // layout, let the constellation reclaim the freed space
     const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 650)
     return () => clearTimeout(t)
-  }, [stageLive])
+  }, [headlineDismissed])
 
   useEffect(() => {
     const onScroll = () => {
@@ -74,8 +104,8 @@ export function HeroBlock({
           inset: 0,
           zIndex: 1,
           pointerEvents: 'none',
-          opacity: stageLive ? 0 : 1,
-          visibility: stageLive ? 'hidden' : 'visible',
+          opacity: headlineDismissed ? 0 : 1,
+          visibility: headlineDismissed ? 'hidden' : 'visible',
           transition: 'opacity 0.6s ease',
         }}
       >
@@ -90,11 +120,11 @@ export function HeroBlock({
               margin: 0,
               whiteSpace: 'nowrap',
               color: '#333333',
-              fontSize: 'clamp(1.5rem, 4.2vw, var(--text-h1))',
+              fontSize: 'clamp(1.75rem, 4.8vw, calc(var(--text-h1) * 1.12))',
               lineHeight: 'var(--leading-display)',
             }}
           >
-            {line1}
+            <TypedLine text={line1} />
           </h1>
           {line2 ? (
             <p
@@ -108,11 +138,11 @@ export function HeroBlock({
                 whiteSpace: 'nowrap',
                 textAlign: 'right',
                 color: 'var(--accent)',
-                fontSize: 'clamp(1.1rem, 2.6vw, var(--text-manifesto))',
+                fontSize: 'clamp(1.3rem, 3vw, calc(var(--text-manifesto) * 1.15))',
                 lineHeight: 'var(--leading-manifesto)',
               }}
             >
-              {line2}
+              <TypedLine text={line2} />
             </p>
           ) : null}
         </div>
@@ -143,31 +173,40 @@ export function HeroBlock({
       </div>
 
       <style>{`
-        @keyframes heroBlurIn {
-          from { opacity: 0; filter: blur(14px); transform: translateY(10px); }
-          to { opacity: 1; filter: blur(0); transform: translateY(0); }
+        .hero-char {
+          display: inline-block;
+          opacity: 0;
+          animation: heroTypeIn 0.01s steps(1) forwards;
         }
-        .hero-text1, .hero-text2 {
-          animation: heroBlurIn 1.1s ease both;
+        @keyframes heroTypeIn {
+          to { opacity: 1; }
         }
-        .hero-text2 { animation-delay: 0.15s; }
         @media (prefers-reduced-motion: reduce) {
-          .hero-text1, .hero-text2 { animation: none; }
+          .hero-char { animation: none; opacity: 1; }
         }
         @media (max-width: 639px) {
-          .hero-headline-overlay .tt-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 0.75em;
-            text-align: center;
-          }
-          .hero-text1,
-          .hero-text2 {
-            position: static !important;
+          /* Sits above the logo (mobile logo box is roughly 41–65vh — see
+             MOBILE_HEIGHT_FRAC/CENTER_Y in lib/three/calibration.ts) so the
+             two lines frame it top/bottom without overlapping. */
+          .hero-text1 {
+            position: absolute !important;
+            top: clamp(84px, 15vh, 130px) !important;
+            left: 50% !important;
+            right: auto !important;
+            bottom: auto !important;
+            transform: translateX(-50%) !important;
             text-align: center !important;
-            font-size: clamp(1.1rem, 6.5vw, 2rem) !important;
+            font-size: clamp(1.4rem, 8vw, 2.1rem) !important;
+          }
+          .hero-text2 {
+            position: absolute !important;
+            top: 71vh !important;
+            left: 50% !important;
+            right: auto !important;
+            bottom: auto !important;
+            transform: translateX(-50%) !important;
+            text-align: center !important;
+            font-size: clamp(1.15rem, 6vw, 1.75rem) !important;
           }
         }
       `}</style>

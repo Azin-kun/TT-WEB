@@ -10,6 +10,9 @@ const nextConfig = {
   // sits at C:\Users\user\, an ancestor dir, which Next.js would otherwise
   // pick up and warn about via its "multiple lockfiles" heuristic).
   outputFileTracingRoot: dirname,
+  // Hides the dev-mode indicator badge (bottom-left round icon) — dev-only,
+  // never shipped in production, but the owner wants it out of the way locally.
+  devIndicators: false,
 }
 
 export default withPayload(nextConfig)
