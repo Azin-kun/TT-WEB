@@ -111,6 +111,14 @@ const run = async () => {
 
   // --- works ×12 (5 featured), deterministic archive scatter ---
   const cats = ['brand', 'web', 'motion', 'engineering'] as const
+  const svcLines = [
+    'Lorem Ipsum, Dolor Sit, Amet Consectetur',
+    'Adipiscing Elit, Sed Eiusmod, Tempor',
+    'Incididunt Labore, Dolore Magna, Aliqua',
+    'Enim Minim, Veniam Quis, Nostrud',
+  ]
+  const industries = ['Lorem Industry', 'Ipsum Sector', 'Dolor Field', 'Amet Domain']
+  const locations = ['Jakarta', 'Bandung', 'Surabaya', 'Yogyakarta']
   for (let i = 0; i < 12; i++) {
     const jx = ((i * 73) % 90) - 45 // deterministic jitter
     const jy = ((i * 37) % 70) - 35
@@ -123,6 +131,9 @@ const run = async () => {
         category: cats[i % 4],
         year: 2022 + (i % 4),
         oneLiner: lorem[i % 6],
+        servicesLine: svcLines[i % 4],
+        industry: industries[i % 4],
+        location: locations[i % 4],
         featured: i < 5,
         archiveSlot: {
           x: (i % 4) * 440 - 660 + jx,
@@ -136,7 +147,13 @@ const run = async () => {
       collection: 'works',
       id: doc.id,
       locale: 'id',
-      data: { title: `Proyek Lorem ${String(i + 1).padStart(2, '0')}`, oneLiner: id(lorem[i % 6]) },
+      data: {
+        title: `Proyek Lorem ${String(i + 1).padStart(2, '0')}`,
+        oneLiner: id(lorem[i % 6]),
+        servicesLine: id(svcLines[i % 4]),
+        industry: id(industries[i % 4]),
+        location: locations[i % 4],
+      },
     })
   }
 

@@ -202,7 +202,22 @@ export interface Work {
   slug: string;
   category: 'brand' | 'web' | 'motion' | 'engineering';
   year: number;
+  /**
+   * One-sentence description — shown as "// 01 Description" in the homepage works carousel
+   */
   oneLiner?: string | null;
+  /**
+   * Comma-separated services list — "// 02 Services" in the works carousel (e.g. "Art Direction, Motion Graphics")
+   */
+  servicesLine?: string | null;
+  /**
+   * "// 03 Industry" in the works carousel
+   */
+  industry?: string | null;
+  /**
+   * "// 04 Location" in the works carousel
+   */
+  location?: string | null;
   cover?: (number | null) | Media;
   featured?: boolean | null;
   /**
@@ -522,6 +537,9 @@ export interface WorksSelect<T extends boolean = true> {
   category?: T;
   year?: T;
   oneLiner?: T;
+  servicesLine?: T;
+  industry?: T;
+  location?: T;
   cover?: T;
   featured?: T;
   archiveSlot?:

@@ -56,6 +56,10 @@ export async function RenderBlocks({
                     slug: w.slug,
                     category: w.category,
                     year: w.year,
+                    oneLiner: w.oneLiner,
+                    servicesLine: w.servicesLine,
+                    industry: w.industry,
+                    location: w.location,
                   }))}
                 />
               )

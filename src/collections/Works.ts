@@ -21,7 +21,30 @@ export const Works: CollectionConfig = {
       ],
     },
     { name: 'year', type: 'number', required: true },
-    { name: 'oneLiner', type: 'text', localized: true },
+    {
+      name: 'oneLiner',
+      type: 'text',
+      localized: true,
+      admin: { description: 'One-sentence description — shown as "// 01 Description" in the homepage works carousel' },
+    },
+    {
+      name: 'servicesLine',
+      type: 'text',
+      localized: true,
+      admin: { description: 'Comma-separated services list — "// 02 Services" in the works carousel (e.g. "Art Direction, Motion Graphics")' },
+    },
+    {
+      name: 'industry',
+      type: 'text',
+      localized: true,
+      admin: { description: '"// 03 Industry" in the works carousel' },
+    },
+    {
+      name: 'location',
+      type: 'text',
+      localized: true,
+      admin: { description: '"// 04 Location" in the works carousel' },
+    },
     { name: 'cover', type: 'upload', relationTo: 'media' },
     { name: 'featured', type: 'checkbox', defaultValue: false },
     {
