@@ -60,13 +60,13 @@ export function SketchIntro({ onDone }: { onDone: () => void }) {
       <style>{`
         @media (max-width: 639px) {
           /* Match the 3D logo's mobile scale (MOBILE_HEIGHT_FRAC / HEIGHT_FRAC
-             = 0.24 / 0.453) so the video-to-mesh handoff doesn't jump size. */
+             = 0.24 / 0.408) so the video-to-mesh handoff doesn't jump size. */
           .sketch-intro-video {
             position: absolute !important;
-            top: 53.4% !important;
+            top: 51.3% !important;
             left: 50% !important;
-            width: calc(100svh * 0.9418) !important;
-            height: calc(100svh * 0.5298) !important;
+            width: calc(100svh * 1.0458) !important;
+            height: calc(100svh * 0.5882) !important;
             max-width: none !important;
             max-height: none !important;
             transform: translate(-50%, -50%);
