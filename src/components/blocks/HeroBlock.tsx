@@ -14,8 +14,8 @@ type Props = {
   floatingWords?: string[]
 }
 
-const TYPE_DUR_S = 4 // characters finish typing by this mark
-const HOLD_DUR_S = 2 // complete text stays put this long after typing finishes
+const TYPE_DUR_S = 1.4 // characters finish typing by this mark (owner 2026-07-17: 1.4s reveal / 7s full)
+const HOLD_DUR_S = 5.6 // complete text stays put this long — dissolve begins at the 7s mark
 const DISMISS_AT_MS = (TYPE_DUR_S + HOLD_DUR_S) * 1000
 
 // Splits a line into per-character spans with a staggered animation-delay so
@@ -41,10 +41,10 @@ function TypedLine({ text }: { text: string }) {
 }
 
 // No preloader — the hero IS the arrival moment (spec base §1.2/§3.2).
-// Sequence: headline types itself out letter-by-letter (4s type, 2s hold —
+// Sequence: headline types itself out letter-by-letter (1.4s type, 5.6s hold —
 // see TYPE_DUR_S/HOLD_DUR_S) *while* the sketch-draw video plays
 // concurrently → video ends and crossfades to the rotating 3D logo →
-// constellation floating words activate. The headline dissolves at the 6s
+// constellation floating words activate. The headline dissolves at the 7s
 // mark regardless of video timing. Nothing is gated behind a "seen this
 // session" flag, so the whole sequence replays every time the hero remounts
 // (e.g. navigating back from Manifesto/Archive).
@@ -94,6 +94,12 @@ export function HeroBlock({
 
   return (
     <section style={{ position: 'relative', minHeight: '100svh', overflow: 'hidden' }}>
+      {/* Mobile-only: the sketch video is a mid-screen band there, leaving
+          bare site background above/below — fill the whole hero with the
+          video's own paper (Paper-BG.jpg, same sheet/shoot) so it reads as
+          one continuous page. Bottom 10% fades out to blend into the site's
+          paper-tile background. Owner request 2026-07-17. */}
+      <div className="tt-hero-paper" aria-hidden />
       <LogoStage onLive={onStageLive} />
       <ConstellationField words={floatingWords} enabled={constellationEnabled} active={stageLive} />
 
@@ -183,6 +189,18 @@ export function HeroBlock({
         }
         @media (prefers-reduced-motion: reduce) {
           .hero-char { animation: none; opacity: 1; }
+        }
+        .tt-hero-paper { display: none; }
+        @media (max-width: 639px) {
+          .tt-hero-paper {
+            display: block;
+            position: absolute;
+            inset: 0;
+            background: url('/media/paper-bg-hero.webp') center / cover no-repeat;
+            -webkit-mask-image: linear-gradient(to bottom, black 90%, transparent 100%);
+            mask-image: linear-gradient(to bottom, black 90%, transparent 100%);
+            pointer-events: none;
+          }
         }
         @media (max-width: 639px) {
           /* Sits above the logo (mobile logo box is roughly 41–65vh — see
