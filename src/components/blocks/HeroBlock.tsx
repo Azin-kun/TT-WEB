@@ -2,11 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { gsap } from 'gsap'
-import { SplitText } from 'gsap/SplitText'
 import { LogoStage } from '../hero/LogoStage'
 import { ConstellationField } from '../hero/ConstellationField'
-
-gsap.registerPlugin(SplitText)
 
 type Props = {
   line1: string
@@ -18,9 +15,13 @@ type Props = {
 }
 
 // No preloader — the hero IS the arrival moment (spec base §1.2/§3.2).
-// The two headline lines reveal word-by-word, hold, then dissolve entirely
-// so the constellation can roam the freed space once they're gone (spec:
-// SYNAPSER plan §10 revision, 2026-07-14).
+// Sequence: headline blur-reveals (CSS only — see .hero-text1/.hero-text2
+// keyframes below) *while* the sketch-draw video plays concurrently → video
+// ends and crossfades to the rotating 3D logo → constellation floating
+// words activate. The headline dissolves the moment the logo goes live,
+// freeing its space for the constellation. Nothing is gated behind a
+// "seen this session" flag, so the whole sequence replays every time the
+// hero remounts (e.g. navigating back from Manifesto/Archive).
 export function HeroBlock({
   line1,
   line2,
@@ -29,82 +30,28 @@ export function HeroBlock({
   constellationEnabled = true,
   floatingWords = [],
 }: Props) {
-  const line1Ref = useRef<HTMLHeadingElement>(null)
-  const line2Ref = useRef<HTMLParagraphElement>(null)
   const metaRef = useRef<HTMLDivElement>(null)
   const cueRef = useRef<HTMLSpanElement>(null)
   const [stageLive, setStageLive] = useState(false)
   const onStageLive = useCallback(() => setStageLive(true), [])
-  // The sketch video/3D logo/constellation stay hidden until both headline
-  // lines finish dissolving (desktop and mobile alike). Starts true (matches
-  // server render — avoids a hydration mismatch) and is closed inside the
-  // entrance effect below, within the same tick as mount.
-  const [videoGate, setVideoGate] = useState(true)
 
   useEffect(() => {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-    gsap.set(metaRef.current, { yPercent: 100 })
-    gsap.to(metaRef.current, { yPercent: 0, duration: 0.75, ease: 'power3.out', delay: 0.1 })
-
     if (reduced) {
-      gsap.set([line1Ref.current, line2Ref.current], { clearProps: 'all' })
-      setVideoGate(true) // no disappear event will fire — don't leave mobile gated shut
+      gsap.set(metaRef.current, { clearProps: 'all' })
       return
     }
-
-    // Desktop: 3s to fully reveal, then dissolve immediately (no hold).
-    // Mobile: 2.2s to fully reveal, then dissolve immediately.
-    const isMobile = window.innerWidth < 640
-    setVideoGate(false)
-    const revealDur = isMobile ? 2.2 : 3.0
-    const disappearAt = revealDur
-
-    const splits = ([line1Ref.current, line2Ref.current].filter((el) => el !== null) as (
-      | HTMLHeadingElement
-      | HTMLParagraphElement
-    )[]).map((el) => new SplitText(el, { type: 'chars' }))
-
-    gsap.set(splits.flatMap((s) => s.chars), { opacity: 0, yPercent: 70 })
-
-    const tl = gsap.timeline()
-    splits.forEach((s) => {
-      tl.to(
-        s.chars,
-        {
-          opacity: 1,
-          yPercent: 0,
-          duration: 0.35,
-          ease: 'power2.out',
-          stagger: { amount: Math.max(0.15, revealDur - 0.35) },
-        },
-        0,
-      )
-    })
-    tl.to(
-      [line1Ref.current, line2Ref.current].filter(Boolean),
-      {
-        opacity: 0,
-        duration: 0.9,
-        ease: 'power2.out',
-        onComplete: () => {
-          ;[line1Ref.current, line2Ref.current].forEach((el) => {
-            if (el) el.style.display = 'none'
-          })
-          // headline no longer occupies space — let the constellation reclaim it
-          window.dispatchEvent(new Event('resize'))
-          // only now let the sketch video / logo / constellation appear
-          setVideoGate(true)
-        },
-      },
-      disappearAt,
-    )
-
-    return () => {
-      tl.kill()
-      splits.forEach((s) => s.revert())
-    }
+    gsap.set(metaRef.current, { yPercent: 100 })
+    gsap.to(metaRef.current, { yPercent: 0, duration: 0.75, ease: 'power3.out', delay: 0.1 })
   }, [])
+
+  useEffect(() => {
+    if (!stageLive) return
+    // headline is dissolving (CSS transition below) — once it's clear of the
+    // layout, let the constellation reclaim the freed space
+    const t = setTimeout(() => window.dispatchEvent(new Event('resize')), 650)
+    return () => clearTimeout(t)
+  }, [stageLive])
 
   useEffect(() => {
     const onScroll = () => {
@@ -117,16 +64,23 @@ export function HeroBlock({
 
   return (
     <section style={{ position: 'relative', minHeight: '100svh', overflow: 'hidden' }}>
-      <LogoStage onLive={onStageLive} allowPlay={videoGate} />
+      <LogoStage onLive={onStageLive} />
       <ConstellationField words={floatingWords} enabled={constellationEnabled} active={stageLive} />
 
       <div
         className="hero-headline-overlay"
-        style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none' }}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          zIndex: 1,
+          pointerEvents: 'none',
+          opacity: stageLive ? 0 : 1,
+          visibility: stageLive ? 'hidden' : 'visible',
+          transition: 'opacity 0.6s ease',
+        }}
       >
         <div className="tt-container" style={{ position: 'relative', height: '100%' }}>
           <h1
-            ref={line1Ref}
             className="tt-display hero-text1"
             data-constellation-avoid
             style={{
@@ -134,9 +88,9 @@ export function HeroBlock({
               top: 'clamp(96px, 14vh, 140px)',
               left: 0,
               margin: 0,
-              maxWidth: 'min(16ch, 30vw)',
+              whiteSpace: 'nowrap',
               color: '#333333',
-              fontSize: 'var(--text-h1)',
+              fontSize: 'clamp(1.5rem, 4.2vw, var(--text-h1))',
               lineHeight: 'var(--leading-display)',
             }}
           >
@@ -144,7 +98,6 @@ export function HeroBlock({
           </h1>
           {line2 ? (
             <p
-              ref={line2Ref}
               className="hero-text2"
               data-constellation-avoid
               style={{
@@ -152,10 +105,10 @@ export function HeroBlock({
                 bottom: 'calc(8vh + 4.5rem)',
                 right: 0,
                 margin: 0,
-                maxWidth: 'min(20ch, 27vw)',
+                whiteSpace: 'nowrap',
                 textAlign: 'right',
                 color: 'var(--accent)',
-                fontSize: 'var(--text-manifesto)',
+                fontSize: 'clamp(1.1rem, 2.6vw, var(--text-manifesto))',
                 lineHeight: 'var(--leading-manifesto)',
               }}
             >
@@ -190,6 +143,17 @@ export function HeroBlock({
       </div>
 
       <style>{`
+        @keyframes heroBlurIn {
+          from { opacity: 0; filter: blur(14px); transform: translateY(10px); }
+          to { opacity: 1; filter: blur(0); transform: translateY(0); }
+        }
+        .hero-text1, .hero-text2 {
+          animation: heroBlurIn 1.1s ease both;
+        }
+        .hero-text2 { animation-delay: 0.15s; }
+        @media (prefers-reduced-motion: reduce) {
+          .hero-text1, .hero-text2 { animation: none; }
+        }
         @media (max-width: 639px) {
           .hero-headline-overlay .tt-container {
             display: flex;
@@ -202,8 +166,8 @@ export function HeroBlock({
           .hero-text1,
           .hero-text2 {
             position: static !important;
-            max-width: 80vw !important;
             text-align: center !important;
+            font-size: clamp(1.1rem, 6.5vw, 2rem) !important;
           }
         }
       `}</style>

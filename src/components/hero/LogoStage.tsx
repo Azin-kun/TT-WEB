@@ -10,12 +10,16 @@ const LogoCanvas = dynamic(() => import('../three/LogoCanvas'), {
   loading: () => null,
 })
 
+// If the 3D canvas never reports ready (WebGL init failure, slow GPU, etc.)
+// don't leave the hero permanently blank — force the handoff through anyway.
+const CANVAS_READY_FALLBACK_MS = 4000
+
 /**
  * Composes the hero logo: the 3D canvas underneath, the sketch-draw video on
  * top. The video crossfades out (opacity in SketchIntro) once it ends; the
  * canvas fades in once its mesh is ready, so the handoff is seamless (spec §7).
  */
-export function LogoStage({ onLive, allowPlay = true }: { onLive?: () => void; allowPlay?: boolean }) {
+export function LogoStage({ onLive }: { onLive?: () => void }) {
   const [introDone, setIntroDone] = useState(false)
   const [canvasReady, setCanvasReady] = useState(false)
 
@@ -23,6 +27,15 @@ export function LogoStage({ onLive, allowPlay = true }: { onLive?: () => void; a
   useEffect(() => {
     if (introDone && canvasReady) onLive?.()
   }, [introDone, canvasReady, onLive])
+
+  useEffect(() => {
+    if (!introDone || canvasReady) return
+    const t = setTimeout(() => {
+      console.error('LogoStage: 3D canvas never reported ready — forcing handoff')
+      setCanvasReady(true)
+    }, CANVAS_READY_FALLBACK_MS)
+    return () => clearTimeout(t)
+  }, [introDone, canvasReady])
 
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
@@ -36,7 +49,7 @@ export function LogoStage({ onLive, allowPlay = true }: { onLive?: () => void; a
       >
         <LogoCanvas onReady={() => setCanvasReady(true)} />
       </div>
-      <SketchIntro onDone={() => setIntroDone(true)} allowPlay={allowPlay} />
+      <SketchIntro onDone={() => setIntroDone(true)} />
     </div>
   )
 }
