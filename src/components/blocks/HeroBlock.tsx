@@ -187,10 +187,12 @@ export function HeroBlock({
         @media (max-width: 639px) {
           /* Sits above the logo (mobile logo box is roughly 41–65vh — see
              MOBILE_HEIGHT_FRAC/CENTER_Y in lib/three/calibration.ts) so the
-             two lines frame it top/bottom without overlapping. */
+             two lines frame it top/bottom without overlapping. line1 sits
+             right at the frame's top edge (owner's marked-up screenshot),
+             not high up under the header. */
           .hero-text1 {
             position: absolute !important;
-            top: clamp(84px, 15vh, 130px) !important;
+            top: clamp(150px, 29vh, 230px) !important;
             left: 50% !important;
             right: auto !important;
             bottom: auto !important;
