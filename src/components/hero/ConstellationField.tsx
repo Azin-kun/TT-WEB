@@ -31,6 +31,8 @@ const PULSE_HOLD_MS = 1500
 const ENTRANCE_STAGGER_MS = 1500
 const ENTRANCE_DUR_MS = 2000
 const MOBILE_MAX_WORDS = 8
+const HOVER_BLINK_MS = 160 // on/off period for the "caught by cursor" red blink
+const HOVER_VIBRATE_PX = 3.5 // jitter amplitude while caught (vs the idle word's stillness)
 
 type WordState = {
   el: HTMLDivElement
@@ -516,12 +518,16 @@ export function ConstellationField({
         s.vx = vx
         s.vy = vy
 
-        // render (hovered word trembles)
+        // render — the word caught by the cursor blinks red and vibrates
         let rx = x
         let ry = y
         if (isHovered) {
-          rx += (Math.random() - 0.5) * 1.6
-          ry += (Math.random() - 0.5) * 1.6
+          rx += (Math.random() - 0.5) * HOVER_VIBRATE_PX
+          ry += (Math.random() - 0.5) * HOVER_VIBRATE_PX
+          const blinkOn = Math.floor(now / HOVER_BLINK_MS) % 2 === 0
+          s.el.style.color = blinkOn ? 'var(--accent)' : 'var(--muted)'
+        } else if (s.el.style.color) {
+          s.el.style.color = ''
         }
         const opacity = s.alpha * fade
         s.el.style.transform = `translate3d(${rx}px, ${ry}px, 0) translate(-50%, -50%)`
