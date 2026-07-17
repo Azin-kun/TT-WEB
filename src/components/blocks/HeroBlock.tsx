@@ -172,7 +172,7 @@ export function HeroBlock({
           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}
         >
           <span style={{ fontSize: '0.875rem', color: 'var(--muted)' }}>{locationLine}</span>
-          <span ref={cueRef} style={{ fontSize: '0.8125rem', color: 'var(--accent)' }}>
+          <span ref={cueRef} style={{ fontSize: '0.75rem', color: 'var(--accent)' }}>
             ↓ {scrollCue}
           </span>
         </div>

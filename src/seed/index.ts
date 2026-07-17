@@ -172,7 +172,7 @@ const run = async () => {
           line1: 'Mitreka Satata',
           line2: 'Jer Basuki Mawa Bea',
           locationLine: 'Lorem ipsum — GMT+7',
-          scrollCue: 'Scroll to explore',
+          scrollCue: 'Scroll',
           constellationEnabled: true,
           floatingWords: [
             'sketch', 'craft', 'design', 'identity', 'motion', 'detail',
@@ -194,7 +194,7 @@ const run = async () => {
       line1: 'Mitreka Satata',
       line2: 'Jer Basuki Mawa Bea',
       locationLine: 'Kota Lorem — GMT+7',
-      scrollCue: 'Gulir untuk menjelajah',
+      scrollCue: 'Gulir',
       floatingWords: [
         'sketsa', 'kriya', 'desain', 'identitas', 'gerak', 'detail',
         'cerita', 'presisi', 'digital', 'atelier', 'jakarta', 'merek',

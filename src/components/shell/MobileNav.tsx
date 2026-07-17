@@ -32,9 +32,9 @@ export function MobileNav({ nav }: { nav: NavItem[] }) {
             display: flex;
             flex-direction: column;
             align-items: flex-end;
-            gap: 12px;
+            gap: 9px;
             position: fixed;
-            right: 10px;
+            right: 8px;
             top: 50%;
             transform: translateY(-50%);
             z-index: 50;
@@ -46,19 +46,19 @@ export function MobileNav({ nav }: { nav: NavItem[] }) {
             transform: rotate(180deg);
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 9px;
             pointer-events: auto;
           }
           .tt-mnav-item {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 9px;
           }
           .tt-mnav-text a {
             text-decoration: none;
             color: var(--accent);
             font-family: var(--font-display);
-            font-size: 1rem;
+            font-size: 0.75rem;
             letter-spacing: 0.05em;
           }
           .tt-mnav-text a:active {
@@ -67,12 +67,13 @@ export function MobileNav({ nav }: { nav: NavItem[] }) {
           .tt-mnav-sep {
             color: var(--accent);
             opacity: 0.55;
+            font-size: 0.75rem;
           }
 
           .tt-mnav-bracket {
-            width: 15px;
-            height: 11px;
-            border: 1.5px solid var(--accent);
+            width: 11px;
+            height: 8px;
+            border: 1.2px solid var(--accent);
           }
           .tt-mnav-bracket-top {
             border-bottom: none;
