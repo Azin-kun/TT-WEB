@@ -1,31 +1,107 @@
+'use client'
+
+import { useEffect, useRef, useState, type MouseEventHandler } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import type { SiteSetting } from '../../payload-types'
 import type { Locale } from '../../lib/i18n'
 import { LocaleToggle } from './LocaleToggle'
 import { MobileNav } from './MobileNav'
 
+const REVEAL_PX = 64 // cursor within this many px of the top edge shows the bar
+const HIDE_PX = 140 // cursor past this hides it again (gap avoids flicker at the edge)
+const INITIAL_HIDE_MS = 1400 // hides shortly after load if the cursor never approaches the top
+const HIDE_DELAY_MS = 900 // grace period before actually hiding, so a quick pass-through doesn't flash it away
+
+// Owner request 2026-07-17: the bar auto-hides and reappears when the
+// cursor approaches the top of the screen — fine-pointer/hover devices
+// only (touch has no hover to detect, so it just stays put there; the
+// separate always-visible MobileNav sidebar is the real mobile nav anyway).
 export function Header({ locale, settings }: { locale: Locale; settings: SiteSetting }) {
+  const pathname = usePathname() || `/${locale}`
+  const headerRef = useRef<HTMLElement>(null)
+  const [visible, setVisible] = useState(true)
+
   const nav = [
     { num: '001', label: settings.navLabels?.home || 'Homepage', href: `/${locale}` },
     { num: '002', label: settings.navLabels?.manifesto || 'Manifesto', href: `/${locale}/manifesto` },
     { num: '003', label: settings.navLabels?.archive || 'Archive', href: `/${locale}/archive` },
   ]
 
+  useEffect(() => {
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return
+
+    let hideTimer: ReturnType<typeof setTimeout> | null = null
+    const clearHideTimer = () => {
+      if (hideTimer) {
+        clearTimeout(hideTimer)
+        hideTimer = null
+      }
+    }
+    const scheduleHide = () => {
+      if (hideTimer) return
+      hideTimer = setTimeout(() => {
+        hideTimer = null
+        if (headerRef.current?.contains(document.activeElement)) return
+        setVisible(false)
+      }, HIDE_DELAY_MS)
+    }
+    const onMove = (e: MouseEvent) => {
+      if (e.clientY <= REVEAL_PX) {
+        clearHideTimer()
+        setVisible(true)
+      } else if (e.clientY > HIDE_PX) {
+        scheduleHide()
+      }
+    }
+    const onFocusIn = () => {
+      clearHideTimer()
+      setVisible(true)
+    }
+
+    window.addEventListener('mousemove', onMove, { passive: true })
+    window.addEventListener('focusin', onFocusIn)
+    const initialHide = setTimeout(() => setVisible(false), INITIAL_HIDE_MS)
+
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('focusin', onFocusIn)
+      clearHideTimer()
+      clearTimeout(initialHide)
+    }
+  }, [])
+
+  const onLogoClick: MouseEventHandler = (e) => {
+    if (pathname !== `/${locale}`) return // let Link navigate home normally
+    e.preventDefault()
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' })
+  }
+
   return (
     <header
+      ref={headerRef}
       style={{
         position: 'fixed',
         insetInline: 0,
         top: 0,
         zIndex: 'var(--z-header)' as never,
+        transform: visible ? 'translateY(0)' : 'translateY(-100%)',
+        opacity: visible ? 1 : 0,
+        transition: 'transform 0.3s ease, opacity 0.3s ease',
       }}
     >
       <div
         className="tt-container tt-header-row"
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBlock: 18, gap: 8 }}
       >
-        <Link href={`/${locale}`} aria-label={settings.siteName || 'TAMPA TARUNO'} style={{ flexShrink: 0 }}>
-          <span className="tt-logo" style={{ width: 36, height: 34 }} />
+        <Link
+          href={`/${locale}`}
+          aria-label={settings.siteName || 'TAMPA TARUNO'}
+          onClick={onLogoClick}
+          style={{ flexShrink: 0 }}
+        >
+          <img src="/media/logo-full-color.svg" alt="" width={36} height={34} style={{ display: 'block' }} />
         </Link>
 
         <nav aria-label="Primary" className="tt-header-nav">
