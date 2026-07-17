@@ -9,6 +9,7 @@ import { isLocale, locales, getAlternates } from '../../../lib/i18n'
 import { SmoothScroll } from '../../../components/providers/SmoothScroll'
 import { Cursor } from '../../../components/shell/Cursor'
 import { Header } from '../../../components/shell/Header'
+import { MobileNav } from '../../../components/shell/MobileNav'
 import { Footer } from '../../../components/shell/Footer'
 
 export function generateStaticParams() {
@@ -59,6 +60,20 @@ export default async function LocaleLayout({
   if (!isLocale(locale)) notFound()
   const settings = await getSettings(locale)
 
+  // Rendered as a sibling of <Header> (not nested inside it) deliberately:
+  // <header> is itself position:fixed, and a position:fixed MobileNav
+  // nested inside it resolves its own top:50% against the header's ~70px
+  // box instead of the viewport — a real bug (nav ends up mostly above the
+  // visible screen), confirmed 2026-07-17 by moving the node to <body> and
+  // watching its computed top/bottom snap to the correct viewport-centered
+  // values. Keeping it a sibling here avoids that containing-block trap
+  // entirely, no portal needed.
+  const nav = [
+    { num: '001', label: settings.navLabels?.home || 'Homepage', href: `/${locale}` },
+    { num: '002', label: settings.navLabels?.manifesto || 'Manifesto', href: `/${locale}/manifesto` },
+    { num: '003', label: settings.navLabels?.archive || 'Archive', href: `/${locale}/archive` },
+  ]
+
   const orgJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
@@ -81,6 +96,7 @@ export default async function LocaleLayout({
         <SmoothScroll />
         <Cursor />
         <Header locale={locale} settings={settings} />
+        <MobileNav nav={nav} />
         <main id="main">{children}</main>
         <Footer locale={locale} settings={settings} />
       </body>

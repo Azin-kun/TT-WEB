@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation'
 import type { SiteSetting } from '../../payload-types'
 import type { Locale } from '../../lib/i18n'
 import { LocaleToggle } from './LocaleToggle'
-import { MobileNav } from './MobileNav'
 
 const REVEAL_PX = 64 // cursor within this many px of the top edge shows the bar
 const HIDE_PX = 140 // cursor past this hides it again (gap avoids flicker at the edge)
@@ -16,7 +15,9 @@ const HIDE_DELAY_MS = 900 // grace period before actually hiding, so a quick pas
 // Owner request 2026-07-17: the bar auto-hides and reappears when the
 // cursor approaches the top of the screen — fine-pointer/hover devices
 // only (touch has no hover to detect, so it just stays put there; the
-// separate always-visible MobileNav sidebar is the real mobile nav anyway).
+// separate MobileNav sidebar — rendered by the layout as a SIBLING of this
+// component, not nested inside it, see layout.tsx — is the real mobile nav
+// anyway).
 export function Header({ locale, settings }: { locale: Locale; settings: SiteSetting }) {
   const pathname = usePathname() || `/${locale}`
   const headerRef = useRef<HTMLElement>(null)
@@ -121,8 +122,6 @@ export function Header({ locale, settings }: { locale: Locale; settings: SiteSet
           <LocaleToggle locale={locale} />
         </div>
       </div>
-
-      <MobileNav nav={nav} />
 
       <style>{`
         @media (max-width: 560px) {
