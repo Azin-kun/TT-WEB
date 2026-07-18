@@ -1,10 +1,9 @@
 # TAMPA TARUNO — Website
 
-A bilingual (EN/ID), dual-appearance marketing site. Landing opens in **Atelier**
-(pencil-sketch, hand-drawn logo → rotating 3D graphite) and switches to
-**Obsidian** (futuristic glossy glass logo, living red/white/gold WebGL
-background) via a light-burst transition. Structure follows a Synapser-style
-scroll narrative (numbered nav, manifesto word-scrub, drag-canvas archive).
+A bilingual (EN/ID) marketing site with a single **Atelier** appearance
+(pencil-sketch, hand-drawn logo → rotating 3D graphite). Structure follows a
+Synapser-style scroll narrative (numbered nav, manifesto word-scrub,
+drag-canvas archive).
 
 Full design spec: [`_PLAN/TAMPA-TARUNO-DUAL-APPEARANCE-DESIGN.md`](../_PLAN/TAMPA-TARUNO-DUAL-APPEARANCE-DESIGN.md)
 in the parent `WEBSITE` folder. Build plan: [`_PLAN/TAMPA-TARUNO-BUILD-PLAN.md`](../_PLAN/TAMPA-TARUNO-BUILD-PLAN.md).
@@ -14,8 +13,7 @@ in the parent `WEBSITE` folder. Build plan: [`_PLAN/TAMPA-TARUNO-BUILD-PLAN.md`]
 Next.js 15 (App Router, TS) · Payload CMS 3 (SQLite in dev) · Tailwind v4 +
 CSS custom-property tokens · GSAP 3.15 (ScrollTrigger, SplitText,
 ScrambleTextPlugin, Draggable, InertiaPlugin, Flip — all free in this GSAP
-version) · Lenis · three.js (lazy-loaded, logo only) · raw WebGL (Obsidian
-background shader, no three.js).
+version) · Lenis · three.js (lazy-loaded, logo only).
 
 ## Running locally
 
@@ -81,9 +79,9 @@ migration in production). No other file references the DB adapter.
     short words) and `constellationEnabled` (checkbox) — the "margin notes"
     constellation tethered to the 3D logo by pencil strings. Editable per
     locale in `/admin`; the hero looks complete without it if disabled/empty.
-- **Global:** `site-settings` (nav labels, contact info). The site now ships
-  a single Atelier appearance (Obsidian removed 2026-07-13) — no
-  appearance-switch labels or transition kill-switch anymore.
+- **Global:** `site-settings` (nav labels, contact info). The site ships a
+  single Atelier appearance — no appearance-switch labels or transition
+  kill-switch.
 - All text-bearing fields are `localized: true` (`en` default, `id`
   secondary). A page's block **layout** (which blocks, in what order) is
   shared across locales; the text *inside* each block is per-locale.
