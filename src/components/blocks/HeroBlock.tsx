@@ -17,6 +17,8 @@ type Props = {
 const TYPE_DUR_S = 1.4 // characters finish typing by this mark (owner 2026-07-17: 1.4s reveal / 7s full)
 const HOLD_DUR_S = 5.6 // complete text stays put this long — dissolve begins at the 7s mark
 const DISMISS_AT_MS = (TYPE_DUR_S + HOLD_DUR_S) * 1000
+const HEADLINE_AFTER_VIDEO_MS = 300 // owner 2026-07-18: typing starts 0.3s after the video truly plays
+const VIDEO_START_FALLBACK_MS = 8000 // video stalls with no error/end → run the headline anyway
 
 // Splits a line into per-character spans with a staggered animation-delay so
 // each line types itself out over TYPE_DUR_S seconds (CSS keyframes only —
@@ -41,13 +43,14 @@ function TypedLine({ text }: { text: string }) {
 }
 
 // No preloader — the hero IS the arrival moment (spec base §1.2/§3.2).
-// Sequence: headline types itself out letter-by-letter (1.4s type, 5.6s hold —
-// see TYPE_DUR_S/HOLD_DUR_S) *while* the sketch-draw video plays
-// concurrently → video ends and crossfades to the rotating 3D logo →
-// constellation floating words activate. The headline dissolves at the 7s
-// mark regardless of video timing. Nothing is gated behind a "seen this
-// session" flag, so the whole sequence replays every time the hero remounts
-// (e.g. navigating back from Manifesto/Archive).
+// Sequence: the sketch-draw video starts → 0.3s after playback truly begins
+// (`playing` event, NOT mount — a slow-buffering video must not be typed
+// over) the headline types itself out letter-by-letter (1.4s type, 5.6s hold
+// — see TYPE_DUR_S/HOLD_DUR_S) → headline dissolves 7s after it started →
+// video ends and crossfades to the rotating 3D logo → constellation floating
+// words activate. Nothing is gated behind a "seen this session" flag, so the
+// whole sequence replays every time the hero remounts (e.g. navigating back
+// from Manifesto/Archive).
 export function HeroBlock({
   line1,
   line2,
@@ -59,8 +62,11 @@ export function HeroBlock({
   const metaRef = useRef<HTMLDivElement>(null)
   const cueRef = useRef<HTMLSpanElement>(null)
   const [stageLive, setStageLive] = useState(false)
+  const [videoStarted, setVideoStarted] = useState(false)
+  const [headlineStarted, setHeadlineStarted] = useState(false)
   const [headlineDismissed, setHeadlineDismissed] = useState(false)
   const onStageLive = useCallback(() => setStageLive(true), [])
+  const onIntroPlayStart = useCallback(() => setVideoStarted(true), [])
 
   useEffect(() => {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -70,10 +76,28 @@ export function HeroBlock({
     }
     gsap.set(metaRef.current, { yPercent: 100 })
     gsap.to(metaRef.current, { yPercent: 0, duration: 0.75, ease: 'power3.out', delay: 0.1 })
+  }, [])
 
+  // Safety net: if the video never fires `playing` (and never errors — e.g. a
+  // stalled network) don't leave the headline hidden forever.
+  useEffect(() => {
+    if (videoStarted) return
+    const t = setTimeout(() => setVideoStarted(true), VIDEO_START_FALLBACK_MS)
+    return () => clearTimeout(t)
+  }, [videoStarted])
+
+  useEffect(() => {
+    if (!videoStarted) return
+    const t = setTimeout(() => setHeadlineStarted(true), HEADLINE_AFTER_VIDEO_MS)
+    return () => clearTimeout(t)
+  }, [videoStarted])
+
+  useEffect(() => {
+    if (!headlineStarted) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return // stays visible
     const t = setTimeout(() => setHeadlineDismissed(true), DISMISS_AT_MS)
     return () => clearTimeout(t)
-  }, [])
+  }, [headlineStarted])
 
   useEffect(() => {
     if (!headlineDismissed) return
@@ -100,11 +124,11 @@ export function HeroBlock({
           one continuous page. Bottom 10% fades out to blend into the site's
           paper-tile background. Owner request 2026-07-17. */}
       <div className="tt-hero-paper" aria-hidden />
-      <LogoStage onLive={onStageLive} />
+      <LogoStage onLive={onStageLive} onIntroPlayStart={onIntroPlayStart} />
       <ConstellationField words={floatingWords} enabled={constellationEnabled} active={stageLive} />
 
       <div
-        className="hero-headline-overlay"
+        className={`hero-headline-overlay${headlineStarted ? ' headline-started' : ''}`}
         style={{
           position: 'absolute',
           inset: 0,
@@ -182,7 +206,15 @@ export function HeroBlock({
         .hero-char {
           display: inline-block;
           opacity: 0;
-          animation: heroTypeIn 0.01s steps(1) forwards;
+        }
+        /* The typing animation only exists once the video actually plays
+           (+0.3s) — animations are created fresh when .headline-started
+           lands, so every char's stagger delay counts from that moment.
+           linear (not steps(1)) over 10ms: visually still a hard pop, but
+           steps(1) left chars stuck invisible when Chrome computed final
+           progress as 0.99999… instead of 1 for some delay values. */
+        .headline-started .hero-char {
+          animation: heroTypeIn 0.01s linear forwards;
         }
         @keyframes heroTypeIn {
           to { opacity: 1; }

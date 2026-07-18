@@ -4,17 +4,36 @@ import { useEffect, useRef, useState } from 'react'
 
 // Full-bleed sketch-draw video, plays on every hero mount (no "seen once"
 // skip) so navigating back to the hero — e.g. from Manifesto/Archive —
-// always replays it, then hands off to the 3D mesh (spec §7). Reduced-motion
-// sees the static poster instead (the video's final frame) and hands off
-// immediately.
-export function SketchIntro({ onDone }: { onDone: () => void }) {
+// always replays it, then hands off to the 3D mesh (spec §7). No poster:
+// until the first frame renders the element is transparent (bare paper
+// background behind it) — the old poster was the video's FINAL frame and
+// spoiled the draw-in whenever the file was slow to buffer. Reduced-motion
+// hands off to the static 3D mesh immediately.
+export function SketchIntro({
+  onDone,
+  onPlayStart,
+}: {
+  onDone: () => void
+  onPlayStart?: () => void
+}) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [hidden, setHidden] = useState(false)
   const doneRef = useRef(false)
+  const startedRef = useRef(false)
+
+  // Fires once, when playback truly begins (first `playing` event) — the
+  // headline keys off this instead of mount time, so it can't type over a
+  // still-buffering video.
+  const signalStart = () => {
+    if (startedRef.current) return
+    startedRef.current = true
+    onPlayStart?.()
+  }
 
   const finish = () => {
     if (doneRef.current) return
     doneRef.current = true
+    signalStart() // skipped/failed video must not strand headline consumers
     setHidden(true)
     onDone()
   }
@@ -49,9 +68,9 @@ export function SketchIntro({ onDone }: { onDone: () => void }) {
         muted
         playsInline
         preload="auto"
+        onPlaying={signalStart}
         onEnded={finish}
         onError={finish}
-        poster="/media/sketch-poster.webp"
         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
       >
         <source src="/media/sketch-draw-16x9.webm" type="video/webm" />

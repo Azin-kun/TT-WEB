@@ -19,7 +19,13 @@ const CANVAS_READY_FALLBACK_MS = 4000
  * top. The video crossfades out (opacity in SketchIntro) once it ends; the
  * canvas fades in once its mesh is ready, so the handoff is seamless (spec §7).
  */
-export function LogoStage({ onLive }: { onLive?: () => void }) {
+export function LogoStage({
+  onLive,
+  onIntroPlayStart,
+}: {
+  onLive?: () => void
+  onIntroPlayStart?: () => void
+}) {
   const [introDone, setIntroDone] = useState(false)
   const [canvasReady, setCanvasReady] = useState(false)
 
@@ -49,7 +55,7 @@ export function LogoStage({ onLive }: { onLive?: () => void }) {
       >
         <LogoCanvas onReady={() => setCanvasReady(true)} />
       </div>
-      <SketchIntro onDone={() => setIntroDone(true)} />
+      <SketchIntro onDone={() => setIntroDone(true)} onPlayStart={onIntroPlayStart} />
     </div>
   )
 }
