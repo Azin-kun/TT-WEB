@@ -137,10 +137,15 @@ blocked on the owner's business info, same as the copy).
 
 ## Performance budgets (verified via `npm run build`)
 
-- Base shared JS: ~102 KB gz (budget: < 250 KB).
+Re-measured 2026-08-02 on a clean `npm run build`. Run the build with the dev
+server **stopped** — both write `.next`, and racing them fails the prerender
+with a bogus `webpack-runtime` "Cannot read properties of undefined".
+
+- Base shared JS: 102 KB gz (budget: < 250 KB) — unchanged by the hero rework.
 - three.js lazy chunk (logo only, code-split via `next/dynamic(ssr:false)`):
-  ~140 KB gz combined (budget: ≤ 180 KB gz). Never included in the base
+  142.6 KB gz combined (budget: ≤ 180 KB gz). Never included in the base
   bundle — confirmed by grepping the shared chunks for three.js signatures.
-- Hero intro: no media request at all — inlined logo paths (17.4 KB raw,
-  8.0 KB gz, measured) replaced the 2.2 MB video pair.
+- Hero intro: no media request at all. The inlined logo paths (17.4 KB raw,
+  8.0 KB gz) land in the `/[locale]` route chunk, not the shared base, and
+  replaced a 2.2 MB video pair.
 - Logo GLB (Draco-compressed): 53.7 KB (budget: ≤ 300 KB).
