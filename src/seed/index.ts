@@ -5,13 +5,27 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { content } from './content'
 
-/** Archive drag-canvas layout: 4 columns, centred, with deterministic jitter. */
+/**
+ * Archive drag-canvas layout. Each row is centred on its own item count, so a
+ * short final row sits under the middle of the one above instead of hugging the
+ * left. Cards are 260px wide and anchor from their top-left corner, so half a
+ * card is subtracted to centre the grid on the canvas origin rather than
+ * pushing it right and down (which used to clip the leftmost card off-screen).
+ */
+const CARD_W = 260
+const CARD_H = 200
+const GAP_X = 440
+const GAP_Y = 320
+
 const archiveSlot = (i: number, total: number) => {
-  const cols = 4
+  const cols = total <= 6 ? 3 : 4
   const rows = Math.ceil(total / cols)
+  const row = Math.floor(i / cols)
+  const col = i % cols
+  const inRow = Math.min(cols, total - row * cols) // last row is usually shorter
   return {
-    x: (i % cols) * 440 - ((cols - 1) * 440) / 2 + (((i * 73) % 90) - 45),
-    y: Math.floor(i / cols) * 320 - ((rows - 1) * 320) / 2 + (((i * 37) % 70) - 35),
+    x: (col - (inRow - 1) / 2) * GAP_X - CARD_W / 2 + (((i * 73) % 90) - 45),
+    y: (row - (rows - 1) / 2) * GAP_Y - CARD_H / 2 + (((i * 37) % 70) - 35),
     scale: 0.85 + ((i * 29) % 31) / 100,
   }
 }

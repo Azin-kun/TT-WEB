@@ -9,8 +9,10 @@ import { LOGO_BLACK_D, LOGO_RED_D, LOGO_VIEWBOX } from './logoPaths'
  *
  * Three beats, all CSS keyframes over the real logo outline:
  *   1. trace — both shapes stroke themselves on (stroke-dashoffset)
- *   2. ink   — graphite/red fill floods in as the trace lands, stroke dissolves
- *              into it, pencil hatching settles on top
+ *   2. ink   — graphite/red fill floods in as the trace lands and pencil hatching
+ *              settles on top. The traced outline is NOT dissolved away, only
+ *              eased back: the finished mark has to stay a drawing, not become
+ *              flat vector fill.
  *   3. lift  — a soft cast shadow grows under the mark, so the drawing reads as
  *              coming off the paper just before the 3D mesh takes over. It is
  *              deliberately a shadow and not a fake extrusion: LogoEngine's idle
@@ -44,6 +46,9 @@ const DONE_AT_MS = 7400
 const INK_BLACK = '#565349'
 const INK_RED = '#a8544e'
 const SHADOW = '#2B2A27'
+// How much of the tracing pencil line survives into the finished mark. Zero
+// here is what turns a drawing into flat vector fill — don't.
+const PENCIL_KEPT = 0.55
 
 type Box = { x: number; y: number; w: number; h: number }
 
@@ -149,7 +154,7 @@ export function SketchIntro({
             patternUnits="userSpaceOnUse"
             patternTransform="rotate(45)"
           >
-            <line x1="0" y1="0" x2="0" y2="12" stroke="#302E2A" strokeWidth="3.4" opacity="0.18" />
+            <line x1="0" y1="0" x2="0" y2="12" stroke="#302E2A" strokeWidth="3.4" opacity="0.26" />
           </pattern>
           <filter id={shadowId} x="-15%" y="-15%" width="130%" height="130%">
             <feGaussianBlur stdDeviation={shadowBlur} />
@@ -230,16 +235,18 @@ export function SketchIntro({
           from { stroke-dashoffset: 1; }
           to   { stroke-dashoffset: 0; }
         }
-        /* Fill floods in while the tracing stroke dissolves into it. Both
-           keyframes start from the target colour at zero alpha so the
-           interpolation never passes through black. */
+        /* Fill floods in under the traced outline. Both keyframes start from
+           the target colour at zero alpha so the interpolation never passes
+           through black. The stroke eases from 0.9 to ${PENCIL_KEPT} rather than
+           to 0 — the pencil edge is the whole point of the mark and survives
+           into the handoff. */
         @keyframes siInkBlack {
           from { fill: rgba(86, 83, 73, 0); stroke-opacity: 0.9; }
-          to   { fill: ${INK_BLACK}; stroke-opacity: 0; }
+          to   { fill: ${INK_BLACK}; stroke-opacity: ${PENCIL_KEPT}; }
         }
         @keyframes siInkRed {
           from { fill: rgba(168, 84, 78, 0); stroke-opacity: 0.9; }
-          to   { fill: ${INK_RED}; stroke-opacity: 0; }
+          to   { fill: ${INK_RED}; stroke-opacity: ${PENCIL_KEPT}; }
         }
         @keyframes siFadeIn {
           from { opacity: 0; }

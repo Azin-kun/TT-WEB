@@ -27,7 +27,10 @@ First run creates `tampa-taruno.db` (SQLite) automatically. Admin panel:
 `tampataruno-2026` (or whatever `SEED_ADMIN_PASSWORD` was set to — **change
 the password after first login**).
 
-**Re-seed from scratch:** delete `tampa-taruno.db`, then:
+**Re-seed from scratch:** stop the dev server, delete `tampa-taruno.db`, then
+run the commands below — and delete `.next` before starting the server again.
+Seeding writes to SQLite behind Next's back, so the revalidate hooks never fire
+and pages keep rendering the previous data until the cache is cleared.
 
 ```bash
 npm run seed          # admin user, settings, statements, services, works, home page (en+id)
