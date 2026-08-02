@@ -17,8 +17,8 @@ type Props = {
 const TYPE_DUR_S = 1.4 // characters finish typing by this mark (owner 2026-07-17: 1.4s reveal / 7s full)
 const HOLD_DUR_S = 5.6 // complete text stays put this long — dissolve begins at the 7s mark
 const DISMISS_AT_MS = (TYPE_DUR_S + HOLD_DUR_S) * 1000
-const HEADLINE_AFTER_VIDEO_MS = 300 // owner 2026-07-18: typing starts 0.3s after the video truly plays
-const VIDEO_START_FALLBACK_MS = 8000 // video stalls with no error/end → run the headline anyway
+const HEADLINE_AFTER_INTRO_MS = 300 // owner 2026-07-18: typing starts 0.3s after the intro truly begins
+const INTRO_START_FALLBACK_MS = 8000 // intro never signals (no error/end) → run the headline anyway
 
 // Splits a line into per-character spans with a staggered animation-delay so
 // each line types itself out over TYPE_DUR_S seconds (CSS keyframes only —
@@ -43,11 +43,12 @@ function TypedLine({ text }: { text: string }) {
 }
 
 // No preloader — the hero IS the arrival moment (spec base §1.2/§3.2).
-// Sequence: the sketch-draw video starts → 0.3s after playback truly begins
-// (`playing` event, NOT mount — a slow-buffering video must not be typed
-// over) the headline types itself out letter-by-letter (1.4s type, 5.6s hold
-// — see TYPE_DUR_S/HOLD_DUR_S) → headline dissolves 7s after it started →
-// video ends and crossfades to the rotating 3D logo → constellation floating
+// Sequence: the code-drawn sketch intro starts tracing the logo → 0.3s after
+// the trace truly begins (NOT mount — SketchIntro measures the artwork first
+// and must not be typed over while the stage is still blank) the headline
+// types itself out letter-by-letter (1.4s type, 5.6s hold — see
+// TYPE_DUR_S/HOLD_DUR_S) → headline dissolves 7s after it started → the intro
+// finishes and crossfades to the rotating 3D logo → constellation floating
 // words activate. Nothing is gated behind a "seen this session" flag, so the
 // whole sequence replays every time the hero remounts (e.g. navigating back
 // from Manifesto/Archive).
@@ -62,11 +63,11 @@ export function HeroBlock({
   const metaRef = useRef<HTMLDivElement>(null)
   const cueRef = useRef<HTMLSpanElement>(null)
   const [stageLive, setStageLive] = useState(false)
-  const [videoStarted, setVideoStarted] = useState(false)
+  const [introStarted, setIntroStarted] = useState(false)
   const [headlineStarted, setHeadlineStarted] = useState(false)
   const [headlineDismissed, setHeadlineDismissed] = useState(false)
   const onStageLive = useCallback(() => setStageLive(true), [])
-  const onIntroPlayStart = useCallback(() => setVideoStarted(true), [])
+  const onIntroPlayStart = useCallback(() => setIntroStarted(true), [])
 
   useEffect(() => {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -78,19 +79,19 @@ export function HeroBlock({
     gsap.to(metaRef.current, { yPercent: 0, duration: 0.75, ease: 'power3.out', delay: 0.1 })
   }, [])
 
-  // Safety net: if the video never fires `playing` (and never errors — e.g. a
-  // stalled network) don't leave the headline hidden forever.
+  // Safety net: if the intro never signals its start (and never finishes)
+  // don't leave the headline hidden forever.
   useEffect(() => {
-    if (videoStarted) return
-    const t = setTimeout(() => setVideoStarted(true), VIDEO_START_FALLBACK_MS)
+    if (introStarted) return
+    const t = setTimeout(() => setIntroStarted(true), INTRO_START_FALLBACK_MS)
     return () => clearTimeout(t)
-  }, [videoStarted])
+  }, [introStarted])
 
   useEffect(() => {
-    if (!videoStarted) return
-    const t = setTimeout(() => setHeadlineStarted(true), HEADLINE_AFTER_VIDEO_MS)
+    if (!introStarted) return
+    const t = setTimeout(() => setHeadlineStarted(true), HEADLINE_AFTER_INTRO_MS)
     return () => clearTimeout(t)
-  }, [videoStarted])
+  }, [introStarted])
 
   useEffect(() => {
     if (!headlineStarted) return
@@ -118,10 +119,10 @@ export function HeroBlock({
 
   return (
     <section style={{ position: 'relative', minHeight: '100svh', overflow: 'hidden' }}>
-      {/* Mobile-only: the sketch video is a mid-screen band there, leaving
-          bare site background above/below — fill the whole hero with the
-          video's own paper (Paper-BG.jpg, same sheet/shoot) so it reads as
-          one continuous page. Bottom 10% fades out to blend into the site's
+      {/* Mobile-only: the logo occupies a mid-screen band there, leaving bare
+          site background above/below — fill the whole hero with the sketch
+          paper (Paper-BG.jpg, the original shoot) so it reads as one
+          continuous page. Bottom 10% fades out to blend into the site's
           paper-tile background. Owner request 2026-07-17. */}
       <div className="tt-hero-paper" aria-hidden />
       <LogoStage onLive={onStageLive} onIntroPlayStart={onIntroPlayStart} />

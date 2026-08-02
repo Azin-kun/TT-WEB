@@ -1,7 +1,9 @@
 // Hero logo calibration (measured 2026-07-16 against sketch-poster.webp, the
-// stitched draw-in + 3D-extrusion video's final frame — the extruded form,
-// bbox x 747–1170 / y 333–774 of 1920×1080). Lets the 3D mesh take over the
-// video at the same on-screen size/position so the crossfade is invisible.
+// final frame of the original stitched draw-in + 3D-extrusion video — the
+// extruded form, bbox x 747–1170 / y 333–774 of 1920×1080). The video is gone
+// (2026-08, replaced by the code-drawn SketchIntro) but these numbers stay the
+// single source of truth for logo placement: SketchIntro sizes its SVG from
+// them exactly as LogoEngine sizes the mesh, so the crossfade is invisible.
 // Spec §7.
 export const CALIB = {
   HEIGHT_FRAC: 0.408, // logo bbox height as fraction of frame height

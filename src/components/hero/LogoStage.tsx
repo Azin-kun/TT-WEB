@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { SketchIntro } from './SketchIntro'
 
 // next/dynamic(ssr:false) keeps three.js out of the base bundle.
@@ -15,9 +15,10 @@ const LogoCanvas = dynamic(() => import('../three/LogoCanvas'), {
 const CANVAS_READY_FALLBACK_MS = 4000
 
 /**
- * Composes the hero logo: the 3D canvas underneath, the sketch-draw video on
- * top. The video crossfades out (opacity in SketchIntro) once it ends; the
- * canvas fades in once its mesh is ready, so the handoff is seamless (spec §7).
+ * Composes the hero logo: the 3D canvas underneath, the code-drawn sketch
+ * intro on top. The intro crossfades out (opacity in SketchIntro) once it
+ * finishes; the canvas fades in once its mesh is ready, so the handoff is
+ * seamless (spec §7).
  */
 export function LogoStage({
   onLive,
@@ -28,6 +29,9 @@ export function LogoStage({
 }) {
   const [introDone, setIntroDone] = useState(false)
   const [canvasReady, setCanvasReady] = useState(false)
+  // Stable identities — SketchIntro keys effects off these.
+  const onIntroDone = useCallback(() => setIntroDone(true), [])
+  const onCanvasReady = useCallback(() => setCanvasReady(true), [])
 
   // signal consumers (constellation entrance) once the 3D logo is truly on screen
   useEffect(() => {
@@ -53,9 +57,9 @@ export function LogoStage({
           transition: 'opacity 0.6s ease',
         }}
       >
-        <LogoCanvas onReady={() => setCanvasReady(true)} />
+        <LogoCanvas onReady={onCanvasReady} />
       </div>
-      <SketchIntro onDone={() => setIntroDone(true)} onPlayStart={onIntroPlayStart} />
+      <SketchIntro onDone={onIntroDone} onPlayStart={onIntroPlayStart} />
     </div>
   )
 }

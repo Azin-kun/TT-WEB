@@ -86,14 +86,37 @@ migration in production). No other file references the DB adapter.
   secondary). A page's block **layout** (which blocks, in what order) is
   shared across locales; the text *inside* each block is per-locale.
 
-Everything currently seeded is **lorem ipsum placeholder copy** — the owner
-hasn't provided real business info/services/project copy yet. Replace via
-`/admin`, not by editing seed data (the seed script is for fresh installs
-only).
+Seeded content is **real business copy** (bilingual EN/ID), written from the
+company documents in the parent workspace — `Tampotaruno/laporan-strategi.md`
+(mission, values, brand story, tagline, the three publicly-marketed services)
+and the actual project repos (`WorldWideSaaS`, `AgencyOS`, `Samsara Atelier`).
+The copy lives in [`src/seed/content.ts`](src/seed/content.ts);
+`src/seed/index.ts` only maps it onto the Payload schema.
+
+Two standing constraints on that copy, because the company has no paying
+clients yet: no invented metrics, client names or outcome claims, and
+`projectCount` counts only verified deliveries (Klinik OS and AI Automation
+are legitimately `0`). Durations quoted on the site (30–45 days, two weeks)
+come from §4 of the strategy report.
+
+Day-to-day edits go through `/admin`, not the seed script (which is for fresh
+installs only). Still placeholder: work cover images (see Assets below) and
+the social links in `site-settings` (empty until real accounts exist).
 
 ## Assets
 
-All generated/produced assets (logo GLB, textures, hero video, Higgsfield
+The hero intro is **drawn in code**, not played from a file: `SketchIntro`
+stroke-draws the real logo outline (paths inlined in
+[`src/components/hero/logoPaths.ts`](src/components/hero/logoPaths.ts),
+generated from `public/media/logo-full-color.svg`), inks it in the 3D
+matcap's own tones, then hands off to the rotating mesh. It sizes itself from
+`CALIB` exactly as `LogoEngine` sizes the mesh, so retuning logo placement
+means editing `lib/three/calibration.ts` and nothing else. The old stitched
+draw-in + Kling extrusion video (`sketch-draw-16x9.mp4`/`.webm`, 2.2 MB) was
+deleted in 2026-08 — recover from git history if it's ever wanted back.
+`sketch-poster.webp` stays: it's the OG/Twitter share image.
+
+Other generated/produced assets (logo GLB, textures, Higgsfield
 outputs) live in `../_ASSETS/` (parent `WEBSITE` folder) with full
 provenance — prompts, models, job IDs, verification notes — logged in
 [`_ASSETS/asset-manifest.md`](../_ASSETS/asset-manifest.md). Copy shipping
@@ -118,5 +141,6 @@ blocked on the owner's business info, same as the copy).
 - three.js lazy chunk (logo only, code-split via `next/dynamic(ssr:false)`):
   ~140 KB gz combined (budget: ≤ 180 KB gz). Never included in the base
   bundle — confirmed by grepping the shared chunks for three.js signatures.
-- Hero video: ~0.9 MB mp4 / ~0.3 MB webm (budget: ≤ 3.5 MB).
+- Hero intro: no media request at all — inlined logo paths (17.4 KB raw,
+  8.0 KB gz, measured) replaced the 2.2 MB video pair.
 - Logo GLB (Draco-compressed): 53.7 KB (budget: ≤ 300 KB).

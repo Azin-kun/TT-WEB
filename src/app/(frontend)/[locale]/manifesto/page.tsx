@@ -19,9 +19,9 @@ export default async function ManifestoPage({ params }: { params: Promise<{ loca
   const [statements, settings] = await Promise.all([getManifesto(locale), getSettings(locale)])
 
   const facts = [
-    { label: locale === 'id' ? 'Didirikan' : 'Founded', value: 'Lorem 2024' },
-    { label: locale === 'id' ? 'Berbasis di' : 'Based in', value: settings.locationLine || 'Lorem ipsum' },
-    { label: locale === 'id' ? 'Fokus' : 'Focus', value: 'Lorem ipsum dolor' },
+    { label: locale === 'id' ? 'Didirikan' : 'Founded', value: '2026' },
+    { label: locale === 'id' ? 'Berbasis di' : 'Based in', value: settings.locationLine || 'Surakarta, ID' },
+    { label: locale === 'id' ? 'Fokus' : 'Focus', value: locale === 'id' ? 'Klinik & UKM' : 'Clinics & SMEs' },
   ]
 
   return (
