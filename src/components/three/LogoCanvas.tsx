@@ -5,9 +5,25 @@ import { LogoEngine } from '../../lib/three/LogoEngine'
 
 // Heavy client component — import it via next/dynamic(ssr:false) so three.js
 // stays out of the base bundle (Global Constraint: three lazy).
-export default function LogoCanvas({ onReady }: { onReady?: () => void }) {
+export default function LogoCanvas({
+  onReady,
+  entrance,
+}: {
+  onReady?: () => void
+  /** Flips true when the sketch intro finishes — runs the extrude-from-flat entrance. */
+  entrance?: boolean
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const engineRef = useRef<LogoEngine | null>(null)
+  // The intro can finish before the GLB has loaded, so the request is latched
+  // here and applied on whichever happens second.
+  const entranceRef = useRef(false)
+
+  useEffect(() => {
+    if (!entrance) return
+    entranceRef.current = true
+    engineRef.current?.startEntrance()
+  }, [entrance])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -18,7 +34,13 @@ export default function LogoCanvas({ onReady }: { onReady?: () => void }) {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     engine.setInteractive(!reduced)
 
-    engine.load().then(() => onReady?.()).catch((err) => console.error('LogoEngine load failed', err))
+    engine
+      .load()
+      .then(() => {
+        if (entranceRef.current) engine.startEntrance()
+        onReady?.()
+      })
+      .catch((err) => console.error('LogoEngine load failed', err))
 
     const onResize = () => engine.resize()
     window.addEventListener('resize', onResize)

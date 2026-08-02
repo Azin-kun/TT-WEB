@@ -57,7 +57,7 @@ export function LogoStage({
           transition: 'opacity 0.6s ease',
         }}
       >
-        <LogoCanvas onReady={onCanvasReady} />
+        <LogoCanvas onReady={onCanvasReady} entrance={introDone} />
       </div>
       <SketchIntro onDone={onIntroDone} onPlayStart={onIntroPlayStart} />
     </div>

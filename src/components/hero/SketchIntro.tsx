@@ -5,50 +5,54 @@ import { CALIB } from '../../lib/three/calibration'
 import { LOGO_BLACK_D, LOGO_RED_D, LOGO_VIEWBOX } from './logoPaths'
 
 /**
- * Code-drawn hero intro (replaced the pre-rendered sketch-draw video, 2026-08).
+ * The hero intro, drawn in code instead of played from a file.
  *
- * Three beats, all CSS keyframes over the real logo outline:
- *   1. trace — both shapes stroke themselves on (stroke-dashoffset)
- *   2. ink   — graphite/red fill floods in as the trace lands and pencil hatching
- *              settles on top. The traced outline is NOT dissolved away, only
- *              eased back: the finished mark has to stay a drawing, not become
- *              flat vector fill.
- *   3. lift  — a soft cast shadow grows under the mark, so the drawing reads as
- *              coming off the paper just before the 3D mesh takes over. It is
- *              deliberately a shadow and not a fake extrusion: LogoEngine's idle
- *              spin has been running behind the intro the whole time, so the
- *              mesh is at an arbitrary angle by the handoff and no flat stand-in
- *              could match its silhouette anyway.
+ * This reproduces the original 7.67s stitched video beat for beat — it is the
+ * same animation, only the source changed. Timings below were read off the
+ * video's own frames (24fps, 184 frames, recoverable from git history at
+ * 31c4a57:public/media/sketch-draw-16x9.mp4):
+ *
+ *   0.0–0.7s  faint construction geometry goes down first — the circle and
+ *             guides an empu strikes before committing a line
+ *   0.3–2.0s  the outline draws itself on in pencil
+ *   2.2–3.1s  RED fills first, sweeping across rather than fading up
+ *   2.6–3.5s  graphite follows, same sweep, one beat behind
+ *   4.0s      handoff — LogoEngine.startEntrance() grows the extrusion out of
+ *             flat and eases into the idle spin, which is what the video's
+ *             third act (4.0–7.67s) showed
+ *
+ * The pencil outline is never dissolved away; it survives under the fill, which
+ * is what keeps the finished mark a drawing rather than flat vector art.
  *
  * The mark is sized the way LogoEngine sizes the mesh — ink-bbox height =
  * HEIGHT_FRAC of the viewport, centred on CENTER_X/CENTER_Y — so the handoff
- * lands on the same pixels. The bbox is measured at runtime rather than
- * hard-coded because the SVG's viewBox carries padding around the artwork.
+ * lands on the same pixels. The bbox is measured at runtime because the SVG's
+ * viewBox carries padding around the artwork.
  *
- * Plays on every hero mount (no "seen once" skip), so navigating back from
- * Manifesto/Archive replays it. Reduced-motion hands straight to the mesh.
+ * Plays on every hero mount (no "seen once" skip). Reduced motion hands
+ * straight to the mesh.
  */
 
-// ms. Matched to the sequence the old 7.67s video ran, so HeroBlock's headline
-// choreography (types at +0.3s, dissolves at +7.3s) needs no retuning: the mesh
-// still takes over just after the headline clears.
-const DRAW_MS = 2500
-const RED_DELAY_MS = 700
-const INK_AT_MS = 2750
-const INK_MS = 950
-const LIFT_AT_MS = 3800
-const LIFT_MS = 2400
-const DONE_AT_MS = 7400
+const GUIDE_MS = 700
+const TRACE_AT_MS = 300
+const TRACE_MS = 1700
+const RED_AT_MS = 1950
+const BLACK_AT_MS = 2400
+const FILL_MS = 900
+const HATCH_AT_MS = 2200
+const HATCH_MS = 1000
+const DONE_AT_MS = 4000
 
-// Final fill tones = the matcap base colours from lib/three/materials.ts, not
-// the SVG's own #000000/#830401 — the last drawn frame has to match the lit
-// mesh, not the flat brand swatch, or the crossfade shows a colour pop.
-const INK_BLACK = '#565349'
-const INK_RED = '#a8544e'
-const SHADOW = '#2B2A27'
+// Fill tones sampled off the original video's own frames (mean colour of the
+// mark at 3.9s, paper excluded): red #7C3C42, graphite #534B47. Do not swap
+// these for the flat brand swatches or the matcap bases — the drawn phase is
+// coloured pencil on paper, and both of those read too light.
+const INK_BLACK = '#534B47'
+const INK_RED = '#7C3C42'
 // How much of the tracing pencil line survives into the finished mark. Zero
-// here is what turns a drawing into flat vector fill — don't.
-const PENCIL_KEPT = 0.55
+// here is what turns a drawing into flat vector fill — don't. The original
+// keeps the ink line clearly darker than the fill it encloses.
+const PENCIL_KEPT = 0.92
 
 type Box = { x: number; y: number; w: number; h: number }
 
@@ -61,7 +65,8 @@ export function SketchIntro({
 }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '')
   const hatchId = `si-hatch-${uid}`
-  const shadowId = `si-shadow-${uid}`
+  const clipRedId = `si-clip-red-${uid}`
+  const clipBlackId = `si-clip-black-${uid}`
   const inkRef = useRef<SVGGElement>(null)
   const [box, setBox] = useState<Box | null>(null)
   const [hidden, setHidden] = useState(false)
@@ -77,7 +82,7 @@ export function SketchIntro({
   onDoneRef.current = onDone
   onPlayStartRef.current = onPlayStart
 
-  // Fires once, when the trace actually begins — the headline keys off this
+  // Fires once, when the drawing actually begins — the headline keys off this
   // (it used to be the video's `playing` event) so it can't type over a blank
   // stage while the bbox is still being measured.
   const signalStart = useCallback(() => {
@@ -95,8 +100,8 @@ export function SketchIntro({
   }, [signalStart])
 
   // Measure the artwork's true ink bbox. The <svg> stays at opacity 0 until this
-  // lands, so nothing is ever painted at the padded viewBox size. getBBox throws
-  // on an unrendered element — fall through to the mesh rather than hang the hero.
+  // lands, so nothing is painted at the padded viewBox size. getBBox throws on
+  // an unrendered element — fall through to the mesh rather than hang the hero.
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       finish()
@@ -118,10 +123,15 @@ export function SketchIntro({
     return () => clearTimeout(t)
   }, [box, signalStart, finish])
 
-  // Shadow falls down-left, away from the 3D scene's key light at (1.5, 2, 2.5).
-  const shadowDx = box ? box.h * 0.009 : 0
-  const shadowDy = box ? box.h * 0.013 : 0
-  const shadowBlur = box ? box.h * 0.012 : 0
+  // Geometry for the construction pass and the colour sweeps, all derived from
+  // the measured bbox so they track the artwork rather than magic numbers.
+  const cx = box ? box.x + box.w / 2 : 0
+  const cy = box ? box.y + box.h / 2 : 0
+  const guideR = box ? box.h * 0.54 : 0
+  const guideSpan = box ? box.w * 0.78 : 0
+  // Sweep rect: oversized and tilted, so the fill reads as a hand colouring the
+  // shape in rather than the whole area fading up at once.
+  const sweep = box ? Math.max(box.w, box.h) * 1.5 : 0
 
   return (
     <div
@@ -140,7 +150,7 @@ export function SketchIntro({
         viewBox={box ? `${box.x} ${box.y} ${box.w} ${box.h}` : LOGO_VIEWBOX}
         preserveAspectRatio="xMidYMid meet"
         style={{
-          overflow: 'visible', // the pencil stroke and the cast shadow fall outside the ink bbox
+          overflow: 'visible', // the pencil stroke and construction circle fall outside the ink bbox
           ...(box ? ({ '--si-aspect': String(box.w / box.h) } as CSSProperties) : { opacity: 0 }),
         }}
       >
@@ -149,34 +159,45 @@ export function SketchIntro({
               mark and the lit mesh read as one pencil surface. */}
           <pattern
             id={hatchId}
-            width="12"
-            height="12"
+            width="14"
+            height="14"
             patternUnits="userSpaceOnUse"
             patternTransform="rotate(45)"
           >
-            <line x1="0" y1="0" x2="0" y2="12" stroke="#302E2A" strokeWidth="3.4" opacity="0.26" />
+            <line x1="0" y1="0" x2="0" y2="14" stroke="#241F1C" strokeWidth="4.6" opacity="0.42" />
           </pattern>
-          <filter id={shadowId} x="-15%" y="-15%" width="130%" height="130%">
-            <feGaussianBlur stdDeviation={shadowBlur} />
-          </filter>
+          <clipPath id={clipRedId}>
+            <rect className="si-sweep si-sweep-red" x={cx - sweep} y={cy - sweep} width={sweep * 2} height={sweep * 2} />
+          </clipPath>
+          <clipPath id={clipBlackId}>
+            <rect className="si-sweep si-sweep-black" x={cx - sweep} y={cy - sweep} width={sweep * 2} height={sweep * 2} />
+          </clipPath>
         </defs>
 
-        {/* 3. lift */}
-        <g className="si-depth" filter={`url(#${shadowId})`}>
-          <path d={LOGO_BLACK_D} fillRule="evenodd" />
-          <path d={LOGO_RED_D} fillRule="evenodd" />
+        {/* 1. construction — struck before any committed line */}
+        <g className="si-guides" fill="none" stroke="var(--line)" strokeWidth="2">
+          <circle cx={cx} cy={cy} r={guideR} pathLength="1" />
+          <line x1={cx - guideSpan} y1={cy} x2={cx + guideSpan} y2={cy} pathLength="1" />
+          <line x1={cx} y1={cy - guideR * 1.25} x2={cx} y2={cy + guideR * 1.25} pathLength="1" />
         </g>
 
-        {/* 1 + 2. the mark itself. This group is what gets measured for the
-            viewBox, so it has to carry the real geometry. */}
+        {/* 3. fill, swept under the outline. Red leads, graphite follows. */}
+        <g className="si-fills">
+          <g clipPath={`url(#${clipRedId})`}>
+            <path d={LOGO_RED_D} fillRule="evenodd" fill={INK_RED} />
+            <path d={LOGO_RED_D} fillRule="evenodd" fill={`url(#${hatchId})`} className="si-hatch" />
+          </g>
+          <g clipPath={`url(#${clipBlackId})`}>
+            <path d={LOGO_BLACK_D} fillRule="evenodd" fill={INK_BLACK} />
+            <path d={LOGO_BLACK_D} fillRule="evenodd" fill={`url(#${hatchId})`} className="si-hatch" />
+          </g>
+        </g>
+
+        {/* 2. the traced outline, on top so it survives the fill. This group is
+            what gets measured for the viewBox, so it carries the real geometry. */}
         <g ref={inkRef} className="si-ink">
           <path className="si-p si-p-black" d={LOGO_BLACK_D} pathLength="1" fillRule="evenodd" />
           <path className="si-p si-p-red" d={LOGO_RED_D} pathLength="1" fillRule="evenodd" />
-        </g>
-
-        <g className="si-hatch">
-          <path d={LOGO_BLACK_D} fillRule="evenodd" fill={`url(#${hatchId})`} />
-          <path d={LOGO_RED_D} fillRule="evenodd" fill={`url(#${hatchId})`} />
         </g>
       </svg>
 
@@ -188,7 +209,7 @@ export function SketchIntro({
           transform: translate(-50%, -50%);
           --si-hf: ${CALIB.HEIGHT_FRAC};
           --si-aspect: 1;
-          --si-stroke: 5;
+          --si-stroke: 8;
           height: calc(var(--si-hf) * 100svh);
           width: calc(var(--si-hf) * 100svh * var(--si-aspect));
         }
@@ -197,64 +218,74 @@ export function SketchIntro({
            there, so the pencil line needs proportionally more user units to
            stay a visible ~1.5px on screen. */
         @media (max-width: 639px) {
-          .si-mark { --si-hf: ${CALIB.MOBILE_HEIGHT_FRAC}; --si-stroke: 9; }
+          .si-mark { --si-hf: ${CALIB.MOBILE_HEIGHT_FRAC}; --si-stroke: 13; }
         }
 
-        /* Pre-run: outline only, nothing drawn yet. */
+        /* Pre-run: nothing drawn, nothing filled. */
         .si-mark .si-p {
-          fill: transparent;
-          stroke: var(--fg);
+          fill: none;
+          stroke: #241F1C;
           stroke-width: var(--si-stroke);
           stroke-linecap: round;
           stroke-linejoin: round;
           stroke-dasharray: 1;
           stroke-dashoffset: 1;
-          opacity: 0.9;
+          stroke-opacity: 0.9;
         }
-        .si-mark .si-depth path { fill: ${SHADOW}; stroke: none; }
-        .si-mark .si-depth, .si-mark .si-hatch { opacity: 0; }
+        .si-mark .si-guides { opacity: 0; }
+        .si-mark .si-guides * { stroke-dasharray: 1; stroke-dashoffset: 1; }
+        /* transform-box makes the sweep scale about the shape's own box rather
+           than the whole SVG viewport. */
+        .si-mark .si-sweep {
+          transform-box: view-box;
+          transform-origin: ${cx - sweep}px ${cy}px;
+          transform: rotate(-20deg) scaleX(0);
+        }
 
+        .si-run .si-guides {
+          animation: siGuideFade ${GUIDE_MS}ms ease-out both;
+        }
+        .si-run .si-guides * {
+          animation: siDraw ${GUIDE_MS}ms ease-out both;
+        }
         .si-run .si-p-black {
-          animation:
-            siDraw ${DRAW_MS}ms ease-in-out both,
-            siInkBlack ${INK_MS}ms ease-out ${INK_AT_MS}ms both;
+          animation: siDraw ${TRACE_MS}ms ease-in-out ${TRACE_AT_MS}ms both,
+                     siPencilSettle 400ms ease-out ${TRACE_AT_MS + TRACE_MS}ms both;
         }
         .si-run .si-p-red {
-          animation:
-            siDraw ${DRAW_MS}ms ease-in-out ${RED_DELAY_MS}ms both,
-            siInkRed ${INK_MS}ms ease-out ${INK_AT_MS}ms both;
+          animation: siDraw ${TRACE_MS}ms ease-in-out ${TRACE_AT_MS + 180}ms both,
+                     siPencilSettle 400ms ease-out ${TRACE_AT_MS + TRACE_MS}ms both;
+        }
+        .si-run .si-sweep-red {
+          animation: siSweep ${FILL_MS}ms cubic-bezier(0.2, 0.6, 0.35, 1) ${RED_AT_MS}ms both;
+        }
+        .si-run .si-sweep-black {
+          animation: siSweep ${FILL_MS}ms cubic-bezier(0.2, 0.6, 0.35, 1) ${BLACK_AT_MS}ms both;
         }
         .si-run .si-hatch {
-          animation: siFadeIn ${INK_MS}ms ease-out ${INK_AT_MS + 150}ms both;
-        }
-        .si-run .si-depth {
-          animation: siLift ${LIFT_MS}ms cubic-bezier(0.33, 0, 0.2, 1) ${LIFT_AT_MS}ms both;
+          animation: siFadeIn ${HATCH_MS}ms ease-out ${HATCH_AT_MS}ms both;
         }
 
         @keyframes siDraw {
           from { stroke-dashoffset: 1; }
           to   { stroke-dashoffset: 0; }
         }
-        /* Fill floods in under the traced outline. Both keyframes start from
-           the target colour at zero alpha so the interpolation never passes
-           through black. The stroke eases from 0.9 to ${PENCIL_KEPT} rather than
-           to 0 — the pencil edge is the whole point of the mark and survives
-           into the handoff. */
-        @keyframes siInkBlack {
-          from { fill: rgba(86, 83, 73, 0); stroke-opacity: 0.9; }
-          to   { fill: ${INK_BLACK}; stroke-opacity: ${PENCIL_KEPT}; }
+        @keyframes siGuideFade {
+          from { opacity: 0; }
+          to   { opacity: 1; }
         }
-        @keyframes siInkRed {
-          from { fill: rgba(168, 84, 78, 0); stroke-opacity: 0.9; }
-          to   { fill: ${INK_RED}; stroke-opacity: ${PENCIL_KEPT}; }
+        /* The line eases back once the fill arrives, but never to zero. */
+        @keyframes siPencilSettle {
+          from { stroke-opacity: 0.9; }
+          to   { stroke-opacity: ${PENCIL_KEPT}; }
+        }
+        @keyframes siSweep {
+          from { transform: rotate(-20deg) scaleX(0); }
+          to   { transform: rotate(-20deg) scaleX(1); }
         }
         @keyframes siFadeIn {
           from { opacity: 0; }
           to   { opacity: 1; }
-        }
-        @keyframes siLift {
-          from { opacity: 0; transform: translate(0px, 0px); }
-          to   { opacity: 0.28; transform: translate(${-shadowDx}px, ${shadowDy}px); }
         }
 
         @media (prefers-reduced-motion: reduce) {
