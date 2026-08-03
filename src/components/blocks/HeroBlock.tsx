@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { LogoStage } from '../hero/LogoStage'
 import { ConstellationField } from '../hero/ConstellationField'
+import { sketchLayerCss } from '../hero/sketchLayout'
 
 type Props = {
   line1: string
@@ -119,12 +120,19 @@ export function HeroBlock({
 
   return (
     <section style={{ position: 'relative', minHeight: '100svh', overflow: 'hidden' }}>
-      {/* Mobile-only: the logo occupies a mid-screen band there, leaving bare
-          site background above/below — fill the whole hero with the sketch
-          paper (Paper-BG.jpg, the original shoot) so it reads as one
-          continuous page. Bottom 10% fades out to blend into the site's
-          paper-tile background. Owner request 2026-07-17. */}
+      {/* The sheet the logo was drawn on, lifted from the original clip's first
+          frame. The sketch layers are stored as frame ÷ paper and multiply onto
+          it, so it has to be the same paper they were photographed against.
+          Bottom edge fades into the site's own paper tile. */}
       <div className="tt-hero-paper" aria-hidden />
+      {/* Construction ticks and the eraser smudge stay on the sheet for the
+          whole sequence — in the original they are still there under the
+          extruded logo at 7.5s. Rendered here rather than inside SketchIntro so
+          they survive its fade-out. */}
+      <div className="tt-hero-guides" aria-hidden>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="tt-hero-guide-layer" src="/media/sketch-guides.webp" alt="" />
+      </div>
       <LogoStage onLive={onStageLive} onIntroPlayStart={onIntroPlayStart} />
       <ConstellationField words={floatingWords} enabled={constellationEnabled} active={stageLive} />
 
@@ -223,18 +231,20 @@ export function HeroBlock({
         @media (prefers-reduced-motion: reduce) {
           .hero-char { animation: none; opacity: 1; }
         }
-        .tt-hero-paper { display: none; }
-        @media (max-width: 639px) {
-          .tt-hero-paper {
-            display: block;
-            position: absolute;
-            inset: 0;
-            background: url('/media/paper-bg-hero.webp') center / cover no-repeat;
-            -webkit-mask-image: linear-gradient(to bottom, black 90%, transparent 100%);
-            mask-image: linear-gradient(to bottom, black 90%, transparent 100%);
-            pointer-events: none;
-          }
+        /* The sheet the logo was actually drawn on, lifted from the original
+           clip's first frame — the sketch layers multiply onto it, so it has to
+           be the same paper they were photographed against. Bottom edge fades
+           into the site's own paper tile. */
+        .tt-hero-paper {
+          position: absolute;
+          inset: 0;
+          background: url('/media/paper-hero-full.webp') center / cover no-repeat;
+          -webkit-mask-image: linear-gradient(to bottom, black 88%, transparent 100%);
+          mask-image: linear-gradient(to bottom, black 88%, transparent 100%);
+          pointer-events: none;
         }
+        ${sketchLayerCss('.tt-hero-guides', '.tt-hero-guide-layer')}
+        .tt-hero-guides { pointer-events: none; }
         @media (max-width: 639px) {
           /* Sits above the logo (mobile logo box is roughly 41–65vh — see
              MOBILE_HEIGHT_FRAC/CENTER_Y in lib/three/calibration.ts) so the

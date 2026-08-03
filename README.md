@@ -108,16 +108,42 @@ the social links in `site-settings` (empty until real accounts exist).
 
 ## Assets
 
-The hero intro is **drawn in code**, not played from a file: `SketchIntro`
-stroke-draws the real logo outline (paths inlined in
-[`src/components/hero/logoPaths.ts`](src/components/hero/logoPaths.ts),
-generated from `public/media/logo-full-color.svg`), inks it in the 3D
-matcap's own tones, then hands off to the rotating mesh. It sizes itself from
-`CALIB` exactly as `LogoEngine` sizes the mesh, so retuning logo placement
-means editing `lib/three/calibration.ts` and nothing else. The old stitched
-draw-in + Kling extrusion video (`sketch-draw-16x9.mp4`/`.webm`, 2.2 MB) was
-deleted in 2026-08 — recover from git history if it's ever wanted back.
-`sketch-poster.webp` stays: it's the OG/Twitter share image.
+The hero intro is the **original pencil drawing, animated by code** — not a
+video, and not a procedural redraw. The old stitched draw-in + Kling extrusion
+clip (`sketch-draw-16x9.mp4`/`.webm`, 2.2 MB) was deleted in 2026-08; its
+frames were a photograph of a real graphite sketch, so the artwork was cut out
+of them instead of being reinvented. That is what keeps the construction
+circle, the doubled strokes where the hand went back over an edge and the
+eraser smudge — none of those survive a procedural rebuild.
+
+Layers in `public/media/` (295 KB total, from 2.2 MB):
+
+| file | what it is |
+|---|---|
+| `paper-hero-full.webp` | the clean sheet, before a single mark |
+| `sketch-outline.webp` | the drawn outline, ~1.9s into the clip |
+| `sketch-red.webp` | red-pencil areas only, ~3.9s |
+| `sketch-graphite.webp` | graphite areas only, ~3.9s |
+| `sketch-guides.webp` | construction ticks + smudge, which stay on the sheet |
+
+Each sketch layer is stored as `frame ÷ clean-paper`, so white means "no
+graphite here" and `mix-blend-mode: multiply` over the paper reproduces the
+original frame. The animation is then only how much of each layer is let
+through. Regenerate them with `scripts/make-sketch-assets.py` against the
+video (recover it with `git show 31c4a57:public/media/sketch-draw-16x9.mp4`)
+rather than hand-editing.
+
+Placement lives in
+[`src/components/hero/sketchLayout.ts`](src/components/hero/sketchLayout.ts):
+the drawn logo's ink box is matched to `CALIB` exactly as `LogoEngine` sizes
+the mesh, so retuning logo placement still means editing
+`lib/three/calibration.ts` and nothing else. `sketch-poster.webp` stays as the
+OG/Twitter share image.
+
+Colours on both sides of the handoff are **measured, not chosen**: the drawn
+phase is the photograph, and `lib/three/materials.ts` is tuned so the mesh
+renders at the clip's own third-act mean (red `#83484B`, graphite `#5E534E`).
+Re-measure before changing them.
 
 Other generated/produced assets (logo GLB, textures, Higgsfield
 outputs) live in `../_ASSETS/` (parent `WEBSITE` folder) with full
