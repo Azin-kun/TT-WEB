@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { LogoEngine } from '@/lib/three/LogoEngine'
-import { DEFAULT_SEPARATION, type SeparationConfig } from '@/lib/three/shatter/types'
+import { toHeroEffectsPayload } from '@/lib/three/shatter/resolveSeparation'
+import type { SeparationConfig } from '@/lib/three/shatter/types'
 
 /**
  * Dev-only tuning bench for the hold-to-separate effect.
@@ -49,15 +50,40 @@ const ROWS: Row[] = [
 
 const COLORS = [['SHINE_WARM', 'Shine warm'], ['SHINE_BRIGHT', 'Shine hot']] as const
 
-export default function ShatterLab() {
+export default function ShatterLab({ initial }: { initial: SeparationConfig }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   // The bench owns a mutable copy; nothing global is mutated any more.
-  const cfgRef = useRef<SeparationConfig>({ ...DEFAULT_SEPARATION })
+  const cfgRef = useRef<SeparationConfig>({ ...initial })
   const [, force] = useState(0)
   const [charge, setCharge] = useState(0)
   const [events, setEvents] = useState<string[]>([])
   const [status, setStatus] = useState('loading…')
   const [nonce, setNonce] = useState(0)
+  const [saveState, setSaveState] = useState<string>('')
+
+  const saveToCms = useCallback(async () => {
+    setSaveState('saving…')
+    try {
+      const res = await fetch('/api/globals/hero-effects', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(toHeroEffectsPayload(cfgRef.current)),
+      })
+      if (res.status === 401 || res.status === 403) {
+        setSaveState('not signed in — log in at /admin first')
+        return
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        setSaveState(`rejected: ${body?.errors?.[0]?.message ?? res.status}`)
+        return
+      }
+      setSaveState('saved — homepage picks it up on next load')
+    } catch (e) {
+      setSaveState(`failed: ${String(e).slice(0, 80)}`)
+    }
+  }, [])
 
   const mount = useCallback(() => {
     const canvas = canvasRef.current
@@ -173,6 +199,24 @@ export default function ShatterLab() {
             />
           </label>
         ))}
+
+        <button
+          type="button"
+          onClick={saveToCms}
+          style={{
+            width: '100%',
+            marginTop: 4,
+            padding: '6px 8px',
+            cursor: 'pointer',
+            border: '1px solid #8E1114',
+            background: 'transparent',
+            color: '#8E1114',
+            font: 'inherit',
+          }}
+        >
+          save to CMS
+        </button>
+        {saveState ? <div style={{ marginTop: 6, opacity: 0.8 }}>{saveState}</div> : null}
 
         <button
           type="button"
