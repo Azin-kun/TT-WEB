@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { SHATTER, type ShatterUniforms } from './types'
+import { type SeparationConfig, type ShatterUniforms } from './types'
 
 /**
  * Patches the pencil matcap materials so the logo's faces peel off on the GPU,
@@ -7,21 +7,25 @@ import { SHATTER, type ShatterUniforms } from './types'
  * Spec: docs/superpowers/specs/2026-08-08-hero-logo-shatter-design.md §6
  */
 
-export function makeShatterUniforms(center: THREE.Vector3, spread: number): ShatterUniforms {
+export function makeShatterUniforms(
+  center: THREE.Vector3,
+  spread: number,
+  config: SeparationConfig,
+): ShatterUniforms {
   return {
     uBlast: { value: 0 },
     uCenter: { value: center.clone() },
     uSpread: { value: spread },
-    uNormalFollow: { value: SHATTER.NORMAL_FOLLOW },
-    uHatchStrength: { value: SHATTER.HATCH_STRENGTH },
-    uHatchScale: { value: SHATTER.HATCH_SCALE },
+    uNormalFollow: { value: config.NORMAL_FOLLOW },
+    uHatchStrength: { value: config.HATCH_STRENGTH },
+    uHatchScale: { value: config.HATCH_SCALE },
     uTime: { value: 0 },
-    uShineStrength: { value: SHATTER.SHINE_STRENGTH },
-    uShineWidth: { value: SHATTER.SHINE_WIDTH },
-    uShineSpeed: { value: SHATTER.SHINE_SPEED },
-    uShineBoost: { value: SHATTER.SHINE_CHARGE_BOOST },
-    uShineWarm: { value: new THREE.Color(SHATTER.SHINE_WARM) },
-    uShineBright: { value: new THREE.Color(SHATTER.SHINE_BRIGHT) },
+    uShineStrength: { value: config.SHINE_STRENGTH },
+    uShineWidth: { value: config.SHINE_WIDTH },
+    uShineSpeed: { value: config.SHINE_SPEED },
+    uShineBoost: { value: config.SHINE_CHARGE_BOOST },
+    uShineWarm: { value: new THREE.Color(config.SHINE_WARM) },
+    uShineBright: { value: new THREE.Color(config.SHINE_BRIGHT) },
   }
 }
 
@@ -105,7 +109,11 @@ vec3 tt_shine(vec3 col, vec3 n){
 }
 `
 
-export function patchForShatter(material: THREE.Material, u: ShatterUniforms) {
+export function patchForShatter(
+  material: THREE.Material,
+  u: ShatterUniforms,
+  config: SeparationConfig,
+) {
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, {
       uBlast: u.uBlast,
@@ -134,6 +142,14 @@ export function patchForShatter(material: THREE.Material, u: ShatterUniforms) {
   outgoingLight = tt_shine(outgoingLight, normal);
   #include <opaque_fragment>`,
       )
+
+    // Vertex displacement only when the interaction is on. When it is off we
+    // skip partitioning, so aOrigin/aAxis/aDir/aParams do not exist — and a
+    // DISABLED vertex attribute defaults to (0, 0, 0, 1), not zeros. That would
+    // give aParams.w = 1 (displacement active) while aAxis is zero-length,
+    // producing NaN from the Rodrigues normalize. Skipping the injection is the
+    // only safe option; relying on attribute defaults is not.
+    if (!config.ENABLED) return
 
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>\n${VERT_HELPERS}`)

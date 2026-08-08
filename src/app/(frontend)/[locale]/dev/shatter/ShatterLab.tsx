@@ -2,19 +2,19 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { LogoEngine } from '@/lib/three/LogoEngine'
-import { SHATTER } from '@/lib/three/shatter/types'
+import { DEFAULT_SEPARATION, type SeparationConfig } from '@/lib/three/shatter/types'
 
 /**
  * Dev-only tuning bench for the hold-to-separate effect.
  * Spec: docs/superpowers/specs/2026-08-08-hero-logo-shatter-design.md
  *
  * Uses the real LogoEngine, so what gets approved here is the shipping code
- * path — not a mock. Sliders write straight into the SHATTER constants and
- * remount the engine so the change takes effect.
+ * path — not a mock. Sliders write straight into the bench's mutable config
+ * copy and remount the engine so the change takes effect.
  */
 
 type Row = {
-  key: keyof typeof SHATTER
+  key: Exclude<keyof SeparationConfig, 'ENABLED' | 'SHINE_WARM' | 'SHINE_BRIGHT'>
   label: string
   min: number
   max: number
@@ -47,13 +47,12 @@ const ROWS: Row[] = [
   { key: 'VIBRATE_PHASE_STEP', label: 'Shake speed', min: 0, max: 3, step: 0.05 },
 ]
 
-const COLORS = [
-  ['SHINE_WARM', 'Shine warm'],
-  ['SHINE_BRIGHT', 'Shine hot'],
-] as const
+const COLORS = [['SHINE_WARM', 'Shine warm'], ['SHINE_BRIGHT', 'Shine hot']] as const
 
 export default function ShatterLab() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  // The bench owns a mutable copy; nothing global is mutated any more.
+  const cfgRef = useRef<SeparationConfig>({ ...DEFAULT_SEPARATION })
   const [, force] = useState(0)
   const [charge, setCharge] = useState(0)
   const [events, setEvents] = useState<string[]>([])
@@ -63,7 +62,7 @@ export default function ShatterLab() {
   const mount = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return undefined
-    const engine = new LogoEngine(canvas)
+    const engine = new LogoEngine(canvas, cfgRef.current)
     engine.setInteractive(true)
 
     let raf = 0
@@ -140,17 +139,17 @@ export default function ShatterLab() {
           <label key={r.key} style={{ display: 'block', marginBottom: 8 }}>
             <span style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span>{r.label}</span>
-              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{SHATTER[r.key]}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{cfgRef.current[r.key]}</span>
             </span>
             <input
               type="range"
               min={r.min}
               max={r.max}
               step={r.step}
-              defaultValue={SHATTER[r.key]}
+              defaultValue={cfgRef.current[r.key]}
               style={{ width: '100%' }}
               onChange={(e) => {
-                SHATTER[r.key] = parseFloat(e.target.value)
+                cfgRef.current[r.key] = parseFloat(e.target.value)
                 force((n) => n + 1)
                 setNonce((n) => n + 1)
               }}
@@ -166,9 +165,9 @@ export default function ShatterLab() {
             <span>{label}</span>
             <input
               type="color"
-              defaultValue={`#${SHATTER[key].toString(16).padStart(6, '0')}`}
+              defaultValue={`#${cfgRef.current[key].toString(16).padStart(6, '0')}`}
               onChange={(e) => {
-                SHATTER[key] = parseInt(e.target.value.slice(1), 16)
+                cfgRef.current[key] = parseInt(e.target.value.slice(1), 16)
                 setNonce((n) => n + 1)
               }}
             />

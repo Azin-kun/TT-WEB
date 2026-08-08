@@ -1,4 +1,4 @@
-import { SHATTER, type ShatterEvent, type ShatterUniforms } from './types'
+import { DEFAULT_SEPARATION, type SeparationConfig, type ShatterEvent, type ShatterUniforms } from './types'
 
 /**
  * Charge / blast / reform state machine for the hero logo.
@@ -55,6 +55,7 @@ export class ShatterController {
   constructor(
     private u: ShatterUniforms,
     private logoHeight: number,
+    private config: SeparationConfig = DEFAULT_SEPARATION,
   ) {}
 
   /** Armed only once the 3D mesh is actually on screen (not during the sketch video). */
@@ -78,7 +79,7 @@ export class ShatterController {
 
   /** Shake offset to apply to the logo group while charging. */
   getVibrateOffset(): { x: number; y: number } {
-    const amp = this.charge * SHATTER.VIBRATE_FRAC * this.logoHeight
+    const amp = this.charge * this.config.VIBRATE_FRAC * this.logoHeight
     return {
       x: Math.sin(this.vibratePhase) * amp,
       y: Math.cos(this.vibratePhase * 1.3) * amp,
@@ -90,7 +91,7 @@ export class ShatterController {
     if (!this.armed) return false
     if (
       typeof window !== 'undefined' &&
-      window.scrollY > window.innerHeight * SHATTER.SCROLL_DISARM_FRAC
+      window.scrollY > window.innerHeight * this.config.SCROLL_DISARM_FRAC
     ) {
       return false
     }
@@ -106,7 +107,7 @@ export class ShatterController {
     if (!this.holding) return false
     const dx = x - this.downX
     const dy = y - this.downY
-    if (dx * dx + dy * dy > SHATTER.DRAG_THRESHOLD_PX * SHATTER.DRAG_THRESHOLD_PX) {
+    if (dx * dx + dy * dy > this.config.DRAG_THRESHOLD_PX * this.config.DRAG_THRESHOLD_PX) {
       this.holding = false
       this.beginReform()
       return true
@@ -149,13 +150,13 @@ export class ShatterController {
   update(dt: number) {
     if (this.state === 'charging' && this.holding) {
       const prev = this.charge
-      this.charge = Math.min(1, this.charge + (dt * 1000) / SHATTER.CHARGE_MS)
+      this.charge = Math.min(1, this.charge + (dt * 1000) / this.config.CHARGE_MS)
       if (prev < 1 && this.charge >= 1) {
         this.state = 'blasted'
         this.emit('blast')
       }
     } else if (this.state === 'reforming') {
-      this.reformT = Math.min(1, this.reformT + (dt * 1000) / SHATTER.REFORM_MS)
+      this.reformT = Math.min(1, this.reformT + (dt * 1000) / this.config.REFORM_MS)
       this.charge = this.reformFrom * (1 - REFORM_EASE(this.reformT))
       if (this.reformT >= 1) {
         this.charge = 0
@@ -164,7 +165,7 @@ export class ShatterController {
       }
     }
 
-    if (this.charge > 0) this.vibratePhase += SHATTER.VIBRATE_PHASE_STEP
+    if (this.charge > 0) this.vibratePhase += this.config.VIBRATE_PHASE_STEP
     this.u.uBlast.value = this.charge
   }
 
