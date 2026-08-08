@@ -12,6 +12,7 @@ import { Services } from './collections/Services'
 import { ManifestoStatements } from './collections/ManifestoStatements'
 import { Pages } from './collections/Pages'
 import { SiteSettings } from './globals/SiteSettings'
+import { HeroEffects } from './globals/HeroEffects'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -25,7 +26,7 @@ export default buildConfig({
   },
   editor: lexicalEditor(),
   collections: [Users, Media, Works, Services, ManifestoStatements, Pages],
-  globals: [SiteSettings],
+  globals: [SiteSettings, HeroEffects],
   localization: {
     locales: ['en', 'id'],
     defaultLocale: 'en',

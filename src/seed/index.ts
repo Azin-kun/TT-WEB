@@ -61,6 +61,36 @@ const run = async () => {
     },
   })
 
+  // --- hero effects (not localized) ---
+  await payload.updateGlobal({
+    slug: 'hero-effects',
+    data: {
+      separationEnabled: true,
+      timing: { chargeMs: 950, reformMs: 2500, separateStart: 0.65, staggerMax: 0.2 },
+      motion: {
+        spreadFrac: 1.6,
+        spreadVar: 0.8,
+        lateralDrift: 0.75,
+        spinMin: 0.18,
+        spinMax: 0.21,
+        capNormalMin: 0.79,
+      },
+      material: {
+        normalFollow: 0.55,
+        hatchStrength: 0.65,
+        hatchScale: 0.5,
+        shineStrength: 0.3,
+        shineWidth: 0.05,
+        shineSpeed: 0.9,
+        shineChargeBoost: 1,
+        shineWarm: '#B4571C',
+        shineBright: '#FFF8E0',
+      },
+      body: { skinOpacity: 0.6, bodyOpacity: 0, bodyEdgeOpacity: 0.9, bodyEdgeAngle: 26 },
+      feel: { vibrateFrac: 0.006, vibratePhaseStep: 1.1, dragThresholdPx: 6 },
+    },
+  })
+
   // --- manifesto statements ---
   for (let i = 0; i < 6; i++) {
     const doc = await payload.create({
