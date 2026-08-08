@@ -2,7 +2,7 @@ import { unstable_cache } from 'next/cache'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 
-import type { Page, Work, Service, ManifestoStatement, SiteSetting } from '../payload-types'
+import type { Page, Work, Service, ManifestoStatement, SiteSetting, HeroEffect } from '../payload-types'
 import { defaultLocale, type Locale } from './i18n'
 
 export type { Locale }
@@ -18,6 +18,17 @@ export const getSettings = (locale: Locale): Promise<SiteSetting> =>
     },
     ['settings', locale],
     { tags: ['settings'] },
+  )()
+
+// Not localized — the values are numbers, so no locale in the cache key.
+export const getHeroEffects = (): Promise<HeroEffect> =>
+  unstable_cache(
+    async () => {
+      const payload = await payloadPromise
+      return payload.findGlobal({ slug: 'hero-effects' })
+    },
+    ['hero-effects'],
+    { tags: ['hero-effects'] },
   )()
 
 export const getPage = (slug: string, locale: Locale): Promise<Page | null> =>

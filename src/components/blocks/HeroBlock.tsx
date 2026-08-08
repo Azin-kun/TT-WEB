@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { LogoStage } from '../hero/LogoStage'
 import { ConstellationField } from '../hero/ConstellationField'
+import type { SeparationConfig } from '../../lib/three/shatter/types'
 
 type Props = {
   line1: string
@@ -11,6 +12,7 @@ type Props = {
   locationLine?: string | null
   scrollCue?: string | null
   constellationEnabled?: boolean
+  separation?: SeparationConfig
   floatingWords?: string[]
 }
 
@@ -57,6 +59,7 @@ export function HeroBlock({
   locationLine,
   scrollCue,
   constellationEnabled = true,
+  separation,
   floatingWords = [],
 }: Props) {
   const metaRef = useRef<HTMLDivElement>(null)
@@ -124,7 +127,7 @@ export function HeroBlock({
           one continuous page. Bottom 10% fades out to blend into the site's
           paper-tile background. Owner request 2026-07-17. */}
       <div className="tt-hero-paper" aria-hidden />
-      <LogoStage onLive={onStageLive} onIntroPlayStart={onIntroPlayStart} />
+      <LogoStage onLive={onStageLive} onIntroPlayStart={onIntroPlayStart} separation={separation} />
       <ConstellationField words={floatingWords} enabled={constellationEnabled} active={stageLive} />
 
       <div
