@@ -1,95 +1,96 @@
-# Hero Logo Hold-to-Shatter — Design
+# Hero Logo Hold-to-Separate — Design
 
 **Date:** 2026-08-08
-**Status:** Approved for planning
+**Status:** Implemented; tuning approved by owner
 **Scope:** Sub-project 1 of 3 (see §9)
+
+> **Filename note.** This file is called `…-shatter-design.md` for continuity with
+> commit `d1359d2`, but the mechanism is **separation, not shattering**. The
+> first draft specified a Voronoi fracture into ~40 tumbling chunks. Frame-by-
+> frame observation of trionn.com later proved that wrong: its faces leave as
+> whole intact planes. The fracture model was deleted, not adjusted. Nothing in
+> the codebase subdivides geometry any more.
 
 ## 1. Goal
 
-Add trionn.com's signature hero interaction — **hold the pointer on the logo to charge, and it breaks apart into tumbling shards; release and it reassembles** — to the TAMPA TARUNO hero, rendered in the existing Atelier pencil language (warm paper, graphite matcap, red `#830401`).
+Hold the pointer on the hero logo and its faces separate and drift apart,
+leaving an intact ghost of the mark behind; release and they glide back
+together. Rendered in the existing Atelier language — warm paper, graphite and
+red pencil — with the logo reading as glass rather than solid.
 
-The site keeps its current look. Nothing about the Atelier appearance changes.
+## 2. What already existed
 
-## 2. What already exists
+`src/lib/three/LogoEngine.ts` already drove the hero mesh: idle counter-clockwise
+spin (≈14 s/rev), ±12° cursor deflection with spring return, drag-to-spin with
+inertia, keyboard rotation, and two `MeshMatcapMaterial` slots (`logo-black`,
+`logo-red`) using a procedurally drawn pencil cross-hatch matcap.
 
-`src/lib/three/LogoEngine.ts` already drives the hero mesh:
-
-- idle counter-clockwise spin, one revolution ≈ 14 s (`IDLE_W = 2π/14`)
-- cursor deflection up to ±12° with a spring return (lerp factor `0.06`)
-- drag to spin, with inertia (velocity damping `0.94`)
-- keyboard rotation, ±15° per arrow press
-- two material slots, `logo-black` and `logo-red`, both `MeshMatcapMaterial` using a procedurally drawn pencil cross-hatch matcap (`src/lib/three/materials.ts`)
-
-The mesh is `public/models/logo.draco.glb` — 53.7 KB Draco, **19,704 triangles**, produced by SVG → `ExtrudeGeometry` (depth 9% of width, bevel 1.1%/1.0%, curveSegments 5). It is a single flat extruded plate, not pre-fractured.
+The mesh is `public/models/logo.draco.glb` — 53.7 KB Draco, **19,704 triangles**,
+built as SVG → `ExtrudeGeometry` (depth 9% of width, bevel, curveSegments 5). A
+flat extruded plate, not pre-fractured.
 
 Toolchain: three.js `^0.185.1`, Next.js `~15.4.11`, GSAP `^3.15.0`.
 
-So "a rotating logo" is **already shipped**. This spec adds only the shatter.
-
 ## 3. Research: what trionn actually does
 
-Read from trionn.com's source bundle (`1233qowaitufq.js`) on 2026-08-08.
+Two passes. The first read their source bundle (`1233qowaitufq.js`). The second
+captured the running page frame by frame — a headless Chrome session with a
+genuinely foregrounded load, which is the only way the symbol mounts at all.
 
-**Provenance caveat:** the symbol could not be observed *rendering*. It mounts behind an intro sequence that requires a genuinely foregrounded page load, and every automated navigation backgrounds the tab (`document.hidden: true`), leaving `#trionn-symbol-canvas-wrap` empty. Every value below is read from source, so the numbers are exact, but the motion was never watched. Treat the *feel* as unverified; the *mechanics* as reliable.
+### 3.1 Rendering architecture (from source)
 
-### 3.1 Rendering architecture
+One `WebGLRenderer` (`powerPreference: "high-performance"`,
+`ACESFilmicToneMapping`, exposure 1.1, clear colour `#0C0C0C`) driving **two
+scenes**: a perspective scene for the symbol, plus an **orthographic full-screen
+plane** textured by an ordinary 2D canvas where interactive "lines" are drawn
+each frame at `renderOrder: 1e4`.
 
-One `WebGLRenderer` (`powerPreference: "high-performance"`, `ACESFilmicToneMapping`, exposure `1.1`, clear colour `789516` = `#0C0C0C`), driving **two scenes**:
+Responsive camera `fov/z`: `42/6` (>1440px), `40/6.28` (≥1024), `38/7.55` (≥768),
+`36/9.35` below. DPR capped 1 mobile / 1.5 desktop. `prefers-reduced-motion`
+checked. No model file is fetched — the geometry is procedural.
 
-- a perspective scene holding the symbol
-- an **orthographic full-screen plane** whose texture is an ordinary 2D canvas (`getContext('2d')`), where the interactive "lines" are drawn each frame, composited on top at `renderOrder: 1e4`
+### 3.2 Motion (from observed frames)
 
-Responsive camera: `fov/z` = `42/6` (>1440px), `40/6.28` (≥1024), `38/7.55` (≥768), `36/9.35` (below). Device pixel ratio capped at `1` on mobile, `1.5` on desktop. `prefers-reduced-motion` is checked.
+| Phase | Timing | What happens |
+|---|---|---|
+| Flare | 80–480 ms | Mark stays **fully assembled** while its faces light up orange and white |
+| Separation | from ~480–620 ms | Whole faces detach and drift outward |
+| Settled | ~1900–2600 ms | Only a wireframe cage of the mark remains |
+| Reform | on release | Faces fly back in and the mark re-solidifies |
 
-No `.glb`/`.gltf`/`.svg` is fetched — the symbol geometry is built procedurally in code.
+Critical correction to the first draft: **nothing fragments**. Individual frames
+show single clean parallelograms and rounded panels drifting — the mark's own
+faces, leaving one at a time. Motion is a slow near-linear glide with only a
+slight turn, closer to an exploded-view diagram than an explosion. The resting
+state is *already* mostly transparent outline with a few filled faces, so
+"faces separate leaving a transparent body" is partly because the body was
+always visible underneath.
 
-### 3.2 Rotation
+Per-fragment rotation in their code is `spinAxis * spinSpeed * n * PI`; charge
+state uses `holdTime += 1/60`, `clickBurst → min(1,…)`, `vibrateAmt = 1` then
+`*= 0.88`, `vibratePhase += 1.1`; release returns pieces over
+`0.6s cubic-bezier(0.25,0.46,0.45,0.94)`. Gated on `scrollProgress < 0.15`,
+excluding `<a>`, `<button>` and the sound toggle.
 
-Two separate systems. Smoothed pointer parallax on the whole symbol:
+### 3.3 Also observed, deliberately not ported
 
-```
-rotation.x += (rotX + 0.22 * pointer.y - current.x) * k
-rotation.y += (rotY + 0.22 * pointer.x - current.y) * k
-```
-
-and, per fragment during the blast:
-
-```
-rotation.{x,y,z} = spinAxis.{x,y,z} * spinSpeed * n * PI
-```
-
-Each fragment carries its own `spinAxis` (a `Vector3`) and `spinSpeed`, so every piece tumbles differently. **This second formula is what we reproduce.**
-
-### 3.3 Charge/blast state machine
-
-`mousedown` inside the hero — excluding `<a>`, `<button>`, the sound toggle, and the keyfacts section, and only while `scrollProgress < 0.15` — starts the charge:
-
-| Variable | Behaviour |
-|---|---|
-| `holdTime` | `+= 1/60` per frame while held |
-| `clickBurst` | charges toward `1` (`Math.min(1, …)`), decays toward `0` (`Math.max(0, …)`) |
-| `vibrateAmt` | set to `1` on press, then `*= 0.88` per frame |
-| `vibratePhase` | `+= 1.1` per frame — drives the shake oscillator |
-| `scrollProgress` | smoothed: `+= (target - current) * k` |
-
-On release, fragments return with `transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)`. If `clickBurst >= 0.98` at release, a "join" sound plays.
-
-The whole system suspends past 80% scroll progress.
-
-**Not being ported:** the sound design (vibrate/explode/join/woosh), the 2D-canvas line layer, `mix-blend-difference` headline treatment, and the near-black palette. Those belong to trionn's dark aesthetic, which TT deliberately does not share.
+A blue **electrical arc** discharges through the mark mid-charge; the whole page
+shakes rigidly (±2 px, identical transform on every element) then each element
+tumbles independently in 3D via its own `matrix3d`; the headline text swaps
+mid-blast. Their sound design, 2D line layer, `mix-blend-difference` treatment
+and near-black palette are all out of scope — those belong to trionn's dark
+canvas, which TT deliberately does not share. The arc overlaps sub-project 2.
 
 ## 4. Architecture
 
-Four new files under `src/lib/three/shatter/`, plus wiring in `LogoEngine`:
+Four modules under `src/lib/three/shatter/`, plus wiring in `LogoEngine`:
 
 | File | Responsibility |
 |---|---|
-| `types.ts` | Shared types and tuning constants |
-| `partition.ts` | CPU, once: de-index geometry, assign triangles to shard cells, write attributes |
-| `shatterMaterial.ts` | `onBeforeCompile` patch and the shared uniform object |
+| `types.ts` | Tuning constants, shared types, deterministic PRNG |
+| `partition.ts` | CPU, once: de-index, tag every triangle with the panel it leaves with |
+| `shatterMaterial.ts` | `onBeforeCompile` patches (vertex displacement, hatch, shine) |
 | `ShatterController.ts` | Charge/blast/reform state machine; owns `uBlast`; emits events |
-
-Data flows one direction:
 
 ```
 pointerdown ─► ShatterController (JS state) ─► uBlast uniform ─► vertex shader ─► pixels
@@ -97,110 +98,138 @@ pointerdown ─► ShatterController (JS state) ─► uBlast uniform ─► ver
                      └─► blast/reform/idle events ─► (no subscribers yet)
 ```
 
-The state machine lives entirely in JS; the GPU only renders a number it is handed. This is deliberate — it is what keeps the feature verifiable despite the displacement happening in a shader (§8).
+All authoritative state is JS; the GPU only renders a number it is handed. That
+is what keeps the effect verifiable despite the displacement happening in a
+shader (§8.2).
 
-## 5. Shard generation
+## 5. Panels
 
-Runs once, after `loadLogo()` resolves, for each of the two meshes.
+Runs once after `loadLogo()` resolves.
 
-1. **`toNonIndexed()`.** Required so that each triangle belongs to exactly one shard. With shared vertices, triangles spanning two cells stretch between them like taffy instead of breaking cleanly. Cost: 19,704 triangles → **59,112 vertices**.
-2. Scatter **40 Voronoi seeds** in the XY plane across the mesh bounding box. The logo is a flat extrusion, so planar cells read as genuine cracks through the plate.
-3. Assign each triangle to the nearest seed by centroid. 19,704 × 40 ≈ 788k distance comparisons — a few milliseconds, once.
-4. Write three attributes per vertex:
+1. **Bake child transforms into geometry.** The shader displaces `position`,
+   which lives in object space; a world-space bounding box would be in the wrong
+   space once the group is scaled to fit the viewport.
+2. **`toNonIndexed()`** so a triangle belongs to exactly one panel — with shared
+   vertices, triangles spanning a boundary stretch instead of detaching.
+   19,704 triangles → 59,112 vertices.
+3. **Classify by face normal.** `|n.z| ≥ CAP_NORMAL_MIN` → front cap (`n.z > 0`)
+   or back cap; otherwise the curved extruded side band.
+4. **One panel per (mesh, kind)** — six in total: front cap, back cap and side
+   band, for each of the two strokes. **There is no subdivision.**
+
+Per-vertex attributes:
 
 | Attribute | Type | Meaning |
 |---|---|---|
-| `aOrigin` | `vec3` | shard centroid — the pivot it tumbles around |
-| `aAxis` | `vec3` | normalised random spin axis |
-| `aParams` | `vec2` | `x` = spin speed (random within `SPIN_RANGE`), `y` = stagger delay (random within `0 – STAGGER_MAX`) |
+| `aOrigin` | `vec3` | panel centroid — the pivot it turns about |
+| `aAxis` | `vec3` | normalised random turn axis |
+| `aDir` | `vec3` | drift direction |
+| `aParams` | `vec4` | `x` turn, `y` stagger delay, `z` distance multiplier, `w` participates |
 
-Outward direction is **derived** in the shader as `normalize(aOrigin - uCenter)` rather than stored, saving a `vec3` per vertex.
+Caps drift along the way they **face** (front toward the viewer, back away) plus
+a lateral component — delamination rather than a radial burst. The side band
+wraps its stroke and has no single facing, so it opens outward in the plane
+instead, falling back to its own random drift if its centroid sits on the
+centre.
 
-Attribute memory: 8 floats × 59,112 × 4 bytes ≈ **1.9 MB** on the GPU. The 53.7 KB download is unchanged.
+`aParams.w` is retained so the shader keeps one code path, but every panel now
+participates, so nothing sets it to 0.
 
-`aParams.y` (stagger) is what prevents all 40 shards moving as one rigid cloud — they break in a ripple rather than in lockstep.
+## 6. Shaders
 
-## 6. Shader patch
+One shared patch on both material slots via `onBeforeCompile`. The **vertex**
+stage gets attribute declarations; the **fragment** stage gets its own helper
+block, since attributes are illegal there.
 
-One shared patch applied to both material slots via `onBeforeCompile`. Helpers injected by replacing `#include <common>` (which also already defines `PI`):
-
+**Vertex — displacement.** Rodrigues rotation about `aAxis`, then translation
+along `aDir`:
 ```glsl
-uniform float uBlast;    // 0..1
-uniform vec3  uCenter;   // logo centre, shared by both meshes
-uniform float uSpread;   // max outward travel
-
-attribute vec3 aOrigin;
-attribute vec3 aAxis;
-attribute vec2 aParams;  // x = spin speed, y = stagger delay
-
-vec3 rotAxis(vec3 v, vec3 axis, float a){
-  float c = cos(a), s = sin(a);
-  return v * c + cross(axis, v) * s + axis * dot(axis, v) * (1.0 - c);
-}
-
-float shardT(){
-  return clamp((uBlast - aParams.y) / max(1e-4, 1.0 - aParams.y), 0.0, 1.0);
-}
+float ttT = tt_shardT();
+vec3 ttLocal = tt_rotAxis(transformed - aOrigin, aAxis, aParams.x * ttT * PI);
+transformed = aOrigin + ttLocal + aDir * (uSpread * aParams.z * ttT);
 ```
 
-Injected after `#include <beginnormal_vertex>` — **this is the step that keeps the matcap lighting correct.** `MeshMatcapMaterial` derives its lookup from the view-space normal, so a shard whose vertices rotate but whose normals do not will light as though it never moved:
+**Vertex — normals.** Rotated only *fractionally* (`uNormalFollow`). Rotating
+fully is physically exact but swings the matcap lookup across flat regions and
+flattens the pencil texture.
 
-```glsl
-objectNormal = rotAxis(objectNormal, aAxis, aParams.x * shardT() * PI);
-```
+**Fragment — pencil hatch.** Three stroke families at different angles and
+spacings switch in progressively as a surface darkens, which is how hand
+hatching builds tone. Keyed off `gl_FragCoord`, **not** the surface: a matcap is
+driven purely by the view normal, so a small flat face samples an almost
+constant texel and comes out flat. Screen space is also how real pencil behaves
+— strokes live on the paper, not on the object.
 
-Injected after `#include <begin_vertex>`:
+**Fragment — light wash.** A light orbits the mark; faces brighten as they turn
+to meet it, blending warm → hot along a band whose width is tunable. Multiplied
+up by `uShineBoost * uBlast` so the mark flares before it comes apart, matching
+the observed order. Hatch is applied first and the wash over it, so the light
+reads as falling *onto* drawn graphite.
 
-```glsl
-float t = shardT();
-vec3 local = rotAxis(transformed - aOrigin, aAxis, aParams.x * t * PI);
-transformed = aOrigin + local + normalize(aOrigin - uCenter + 1e-5) * (uSpread * t);
-```
+## 7. Skin, body and interaction
 
-The rotation term reproduces trionn's `spinAxis * spinSpeed * n * PI` exactly.
+### 7.1 Two logos
 
-Both materials share **one uniform object**, so a single JS write per frame drives the whole effect: one uniform update, one draw call per material, no per-frame CPU geometry work.
+- **Outer skin** — the loaded mesh. Every face separates. `DoubleSide`,
+  `transparent`, `SKIN_OPACITY`, `depthWrite: false`, `renderOrder: 2`.
+- **Inner body** — a second logo built from *cloned* geometry before
+  partitioning (partition replaces and disposes the originals). It never moves,
+  and is **parented to the logo group** so it inherits the idle spin, cursor
+  tilt and charge shake rather than sitting frozen while the skin moves.
+  Surfaces at `BODY_OPACITY` (`renderOrder: 0`), outlines via `EdgesGeometry`
+  at `BODY_EDGE_OPACITY` (`renderOrder: 1`).
 
-`uCenter` is computed once from the **combined** bounding box of both meshes and is identical for both materials. Using each mesh's own centre instead would make the black and red halves fly apart in different directions.
+At `BODY_OPACITY: 0` the surface meshes are skipped entirely and their cloned
+geometry disposed, so the body renders as a pure wireframe — which is what
+trionn's late frames actually show — with no invisible draw calls.
 
-## 7. Interaction
+### 7.2 Drag vs. hold
 
-### 7.1 Drag vs. hold
-
-`LogoEngine.onDown` already sets `dragging = true`, and hold-to-charge also begins on `pointerdown`. Trionn resolves the same collision by carrying both `r.dragging` and `r.holding`. Our rule:
+`onDown` already set `dragging`, and hold-to-charge also begins on
+`pointerdown`. Trionn resolves the same collision by carrying both `dragging`
+and `holding`. Our rule:
 
 ```
 pointerdown            → begin charging; record start x/y
-moved > 6px            → reclassify as a drag: cancel charge, hand off to existing drag+inertia
+moved > 6px            → reclassify as a drag: cancel charge, hand off to drag+inertia
 released before full   → reform
-charge reaches 1.0     → shattered; held open while the pointer stays down
+charge reaches 1.0     → fully separated; held while the pointer stays down
 release                → reform
 ```
 
 Existing drag, inertia, cursor deflection and keyboard rotation are unchanged.
 
-### 7.2 Tuning constants
+### 7.3 Tuning — owner-approved 2026-08-08
 
-Starting values. These are expected to be tuned live with the owner.
-
-| Constant | Value | Source |
+| Constant | Value | Note |
 |---|---|---|
-| `CHARGE_MS` | 900 | hold ≈ 0.9 s to fully break |
-| `REFORM_MS` | 600 | trionn's `0.6s` |
-| `REFORM_EASE` | `cubic-bezier(.25,.46,.45,.94)` | trionn's exact curve |
-| `DRAG_THRESHOLD_PX` | 6 | drag-vs-hold discrimination |
-| `SPIN_RANGE` | 0.6 – 1.2 | per-shard `aParams.x`, in multiples of π radians at full blast |
-| `SPREAD` | 0.35 × logo height | outward travel |
-| `SHARD_COUNT` | 40 | Voronoi cells |
-| `STAGGER_MAX` | 0.35 | max per-shard stagger delay |
-| `VIBRATE_MAX` | 0.006 × logo height | peak shake amplitude at full charge |
-| `VIBRATE_PHASE_STEP` | 1.1 | trionn's `vibratePhase += 1.1` |
+| `CHARGE_MS` | 950 | hold to full separation |
+| `REFORM_MS` | 2500 | far slower than trionn's 600 — faces drift back, don't snap |
+| `SEPARATE_START` | 0.65 | fraction of charge before anything moves — the flare |
+| `STAGGER_MAX` | 0.2 | extra per-panel delay |
+| `SPREAD_FRAC` | 1.6 | drift distance, × logo height |
+| `SPREAD_VAR` | 0.8 | ± per-panel variation |
+| `LATERAL_DRIFT` | 0.75 | sideways component (camera is near front-on) |
+| `SPIN_MIN` / `SPIN_MAX` | 0.18 / 0.21 | × π radians — low, so it glides |
+| `CAP_NORMAL_MIN` | 0.79 | cap vs side-band cutoff |
+| `NORMAL_FOLLOW` | 0.55 | |
+| `HATCH_STRENGTH` / `HATCH_SCALE` | 0.65 / 0.5 | dense, strong strokes |
+| `SHINE_STRENGTH` / `WIDTH` / `SPEED` | 0.3 / 0.05 / 0.9 | narrow band = hard specular streak |
+| `SHINE_CHARGE_BOOST` | 1 | |
+| `SHINE_WARM` / `SHINE_BRIGHT` | `#B4571C` / `#FFF8E0` | |
+| `SKIN_OPACITY` | 0.6 | glassy but the palette survives the light ground |
+| `BODY_OPACITY` | 0 | wireframe only |
+| `BODY_EDGE_OPACITY` / `BODY_EDGE_ANGLE` | 0.9 / 26 | |
+| `VIBRATE_FRAC` / `VIBRATE_PHASE_STEP` | 0.006 / 1.1 | |
+| `DRAG_THRESHOLD_PX` | 6 | |
 
-`REFORM_EASE` is evaluated **in JS** with a cubic-bézier solver (Newton–Raphson on the x axis), not as a CSS transition — the reform drives a uniform, not a DOM property. Trionn could use a CSS transition because its fragments were DOM elements; ours are vertices.
+`SHATTER` is deliberately a mutable object so the dev bench can write to it live.
 
-### 7.3 Vibration
-
-Stays in JS, not the shader: amplitude `VIBRATE_MAX * charge`, phase advancing `VIBRATE_PHASE_STEP` radians per frame, applied to `group.position`. Keeping it CPU-side means the shake is readable and tunable without recompiling a shader.
+**Known consequence of this tuning:** at `SPREAD_FRAC` 1.6 with ±0.8 variation,
+panels reach the frame edges by ~350 ms and are gone by ~1200 ms, so most of the
+travel happens off-screen. The effect reads as "the skin blows away, leaving the
+ghost" rather than a visible glide. Around 0.6–0.9 would keep faces in view far
+longer if that is ever wanted.
 
 ### 7.4 Public interface
 
@@ -209,55 +238,77 @@ engine.onShatter(cb: (e: 'blast' | 'reform' | 'idle') => void): () => void
 engine.getCharge(): number   // 0..1
 ```
 
-Discrete transitions are events; the continuous charge value is **pulled**, not pushed, so no event object is allocated per frame.
+Discrete transitions are events; the continuous charge is **pulled**, so no
+object is allocated per frame. **Nothing subscribes today** — this exists so the
+orbiting-planets sub-project (§9) can react without the separation knowing about
+it. That decoupling is what let this ship before the constellation is replaced.
 
-**Nothing subscribes to this today.** It exists so the orbiting-planets sub-project (§9) can react to the shatter without the shatter knowing anything about it. This is the decoupling that lets sub-project 1 ship before the constellation is replaced.
-
-## 8. Fallbacks, edge cases, verification
+## 8. Fallbacks and verification
 
 ### 8.1 Fallbacks
 
-- **`prefers-reduced-motion`** — shatter never engages, and partitioning is **skipped entirely**, avoiding both the 1.9 MB and the setup cost. `LogoCanvas` already computes this and calls `setInteractive(false)`.
-- **Not armed until the mesh is live.** Gated on the existing `LogoStage` ready signal so it cannot fire during the sketch-draw video.
-- **Scrolled away.** Charging is refused once the hero has scrolled more than 15% of viewport height, mirroring trionn's `scrollProgress < 0.15` gate. A blast already in flight still reforms normally rather than freezing mid-break.
-- **Header/nav/links are safe.** `onDown` is bound to the canvas, not `window`, so clicks elsewhere never reach it.
-- **`pointercancel` and window `blur` reform**, so a blast can never get stuck open.
-- **Mobile stays enabled.** The work is per-vertex in a single draw call, cheap even on weak GPUs. `MOBILE_HEIGHT_FRAC` already shrinks the logo; `SPREAD` scales off logo height so the blast scales with it.
-- **WebGL failure** — unchanged. `LogoStage`'s existing 4 s fallback still forces the video→mesh handoff; the shatter simply never engages.
+- **`prefers-reduced-motion`** — never engages; partitioning, patching and the
+  inner body are all skipped, avoiding the attribute memory entirely.
+- **Not armed until the mesh is live**, gated on the existing `LogoStage` ready
+  signal, so a press during the sketch-draw video can't trigger it.
+- **Scrolled away** — charging refused past 15% of viewport height (mirroring
+  trionn's `scrollProgress < 0.15`). A blast already in flight still reforms.
+- **Header/nav/links are safe** — `onDown` binds to the canvas, not `window`.
+- **`pointercancel` and window `blur` reform**, so a blast can't stick open.
+- **WebGL failure** — unchanged; `LogoStage`'s 4 s fallback still forces the
+  video→mesh handoff and the separation simply never arms.
 
 ### 8.2 Verification
 
-Shard positions live on the GPU and cannot be read back from JS, so verification is layered. Layers 2 and 3 exist specifically to cover that.
+Panel positions live on the GPU and can't be read back, so verification is
+layered. A headless-Chrome harness (`puppeteer-core`, installed in the session
+scratchpad only) drives real mouse down/hold/up against the dev bench:
 
-1. **JS state assertions** — charge value, event ordering, drag-vs-hold discrimination, timings. Asserted inside a single atomic in-page script, which is this project's documented-reliable pattern (cross-tool-call DOM checks after a synthetic click are known unreliable here).
-2. **Shader compile check** — assert the patched program links and that the uniform and attributes bind. Without this, a silent shader failure renders a perfectly normal-looking logo that simply never shatters, which is easy to mistake for "not triggered".
-3. **`gl.readPixels` at the logo centre** — graphite at `uBlast = 0`, paper at `uBlast = 1`. Direct, screenshot-free proof that vertices actually moved. This is the check that catches "normals rotated but geometry didn't", and vice versa.
-4. **Typecheck, plus SSR curl on both locales**, per project convention.
+1. **JS state** — charge ramp, event ordering, drag-vs-hold, timings.
+2. **Shader compile** — a silent GLSL failure renders a perfectly normal-looking
+   logo that simply never separates, which is easy to misread as "not triggered".
+3. **Frame contact sheets** — the progression captured at intervals and tiled
+   into one image, which is what caught the fracture-vs-separation error that
+   single screenshots had hidden.
+4. **Typecheck**, plus SSR curl on both locales.
 
-The browser pane on this project is unreliable for visual confirmation, so final aesthetic sign-off is the owner eyeballing it live — as with every previous hero change.
+Measured after the approved tuning: charge 0 → 1 and holds; on release
+0.611 → 0.312 → 0.129 → 0.031 → **0 at 2500 ms**, staying 0; events
+`blast → reform → idle`; drag cancels a charge; no console errors.
+
+**Note on the browser pane:** it cannot reach localhost on this project and its
+tabs report `document.hidden`, which pauses `rAF` and stalls the render loop.
+The puppeteer harness exists because of that, and is the reliable path.
 
 ## 9. Out of scope
 
-This spec covers the shatter only. Two further sub-projects were agreed on 2026-08-08, each to get its own spec, plan and implementation cycle:
+Two further sub-projects, each getting its own spec, plan and build cycle:
 
-- **Electrical sketch→3D transition** — an electrical effect on the `SketchIntro` video → `LogoStage` mesh handoff. Blocked on the owner's reference video.
-- **Orbiting glowing planets** — replaces `ConstellationField.tsx` (628 lines) with glowing planets carrying the CMS-fed words, orbiting the logo. Will subscribe to the §7.4 interface. Blocked on the owner's reference video.
+- **Electrical sketch→3D transition** — reference video at
+  `_ASSETS/video/Transition-3d-sketch-to-3d-rotating.mp4`. Related to trionn's
+  discharge arc (§3.3).
+- **Orbiting glowing planets** — replaces `ConstellationField.tsx`; reference at
+  `_ASSETS/video/Orbiting-orbs-sample.mp4`. Will subscribe to §7.4.
 
-Also explicitly not in scope: sound design, the 2D-canvas line layer, `mix-blend-difference` headline treatment, and any move toward trionn's dark palette.
+`ConstellationField` is **not modified** here — it is scheduled for replacement,
+so wiring the separation into its existing `gather`/`spiralBurst` would be
+thrown away.
 
-`ConstellationField` is **not modified** by this work. Its existing hover-gather and `spiralBurst` behaviour is left exactly as-is, precisely because it is scheduled for replacement.
-
-## 10. Files touched
+## 10. Files
 
 New:
-- `src/lib/three/shatter/types.ts`
-- `src/lib/three/shatter/partition.ts`
-- `src/lib/three/shatter/shatterMaterial.ts`
-- `src/lib/three/shatter/ShatterController.ts`
+- `src/lib/three/shatter/{types,partition,shatterMaterial,ShatterController}.ts`
+- `src/app/(frontend)/[locale]/dev/shatter/{page,ShatterLab}.tsx` — dev-only
+  tuning bench, `notFound()` in production. Uses the real `LogoEngine`, so what
+  is approved there is the shipping path. It publishes `window.__ttShatter` for
+  tuning and automated checks; that handle never reaches a production build.
 
 Modified:
-- `src/lib/three/LogoEngine.ts` — instantiate the controller, apply the material patch, resolve drag-vs-hold in `onDown`/`onMove`/`onUp`, advance charge in `tick`, expose `onShatter`/`getCharge`
-- `src/components/three/LogoCanvas.tsx` — arm the shatter once ready; pass the reduced-motion flag through
-- `src/components/hero/LogoStage.tsx` — forward the live signal that arms the shatter
+- `src/lib/three/LogoEngine.ts` — builds the inner body, partitions and patches
+  the skin, resolves drag-vs-hold, advances charge and the shine clock, exposes
+  `onShatter`/`getCharge`/`setShatterArmed`
 
-Unchanged: `materials.ts` (the patch is applied by `shatterMaterial.ts`, the matcap itself is untouched), `calibration.ts`, `loadLogo.ts`, `ConstellationField.tsx`, `SketchIntro.tsx`, all CMS collections and seed data.
+Unchanged: `materials.ts`, `calibration.ts`, `loadLogo.ts`, `ConstellationField.tsx`,
+`SketchIntro.tsx`, `LogoStage.tsx`, all CMS collections and seed data. **The
+homepage hero is not yet wired to this** — the capability and the bench exist;
+arming it on the live hero is a separate step.

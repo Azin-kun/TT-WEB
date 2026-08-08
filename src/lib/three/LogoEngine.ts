@@ -2,6 +2,10 @@ import * as THREE from 'three'
 import { CALIB, visibleHeight } from './calibration'
 import { loadLogo } from './loadLogo'
 import { makePencilMaterials, type LogoMaterials } from './materials'
+import { partitionForShatter } from './shatter/partition'
+import { makeShatterUniforms, patchForShatter } from './shatter/shatterMaterial'
+import { ShatterController } from './shatter/ShatterController'
+import { SHATTER, type ShatterEvent, type ShatterUniforms } from './shatter/types'
 
 const DEG = Math.PI / 180
 const IDLE_W = (Math.PI * 2) / 14 // one revolution ≈ 14 s, +Y = CCW from above (spec §7)
@@ -34,6 +38,13 @@ export class LogoEngine {
   private idleTimer = 0
   private tilt = { x: 0, z: 0, tx: 0, tz: 0 }
   private interactive = true
+
+  // hold-to-shatter
+  private shatter: ShatterController | null = null
+  private shatterUniforms: ShatterUniforms | null = null
+  private bodyMaterials: THREE.Material[] = []
+  private pointerActive = false
+  private baseY = 0
 
   constructor(private canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
@@ -75,6 +86,38 @@ export class LogoEngine {
       }
     })
 
+    this.baseY = group.position.y
+
+    // Hold-to-shatter. Skipped entirely under reduced motion, which also avoids
+    // generating the ~1.9 MB of per-vertex attributes.
+    if (this.interactive) {
+      // The intact translucent body that stays once the skin has fully shed.
+      // Built from CLONED geometry BEFORE partitioning, because partition
+      // replaces the originals and disposes them.
+      const body = this.buildInnerBody(group)
+
+      const part = partitionForShatter(group)
+      const u = makeShatterUniforms(part.center, part.height * SHATTER.SPREAD_FRAC)
+      Object.values(set).forEach((m) => {
+        // The skin is glass: sheer, and both sides visible as panels turn.
+        m.side = THREE.DoubleSide
+        m.transparent = true
+        m.opacity = SHATTER.SKIN_OPACITY
+        m.depthWrite = false
+        patchForShatter(m, u)
+      })
+      // skin draws over the body; body surfaces under their own edges
+      group.traverse((o) => {
+        if ((o as THREE.Mesh).isMesh) o.renderOrder = 2
+      })
+      // parented to the group, so it inherits the idle spin, tilt and shake
+      group.add(body)
+      this.shatterUniforms = u
+      // vibration is applied to group.position, which is in world units — so it
+      // scales off the RENDERED height, not the geometry height used by uSpread
+      this.shatter = new ShatterController(u, heightFrac * visH)
+    }
+
     this.scene.add(group)
     this.resize()
     this.attach()
@@ -86,9 +129,86 @@ export class LogoEngine {
     return this.group
   }
 
+  /**
+   * The complete translucent logo that sits inside the skin and never moves.
+   * Once every face has separated this is all that remains — a ghost of the
+   * mark, its surfaces faint and its silhouette drawn in.
+   */
+  private buildInnerBody(group: THREE.Group): THREE.Group {
+    const bodyMats = makePencilMaterials()
+    Object.values(bodyMats).forEach((m) => {
+      m.transparent = true
+      m.opacity = SHATTER.BODY_OPACITY
+      m.depthWrite = false
+      m.side = THREE.DoubleSide
+    })
+    const edgeMat = new THREE.LineBasicMaterial({
+      color: 0x2b2a27,
+      transparent: true,
+      opacity: SHATTER.BODY_EDGE_OPACITY,
+      depthWrite: false,
+    })
+    this.bodyMaterials = [...Object.values(bodyMats), edgeMat]
+
+    const body = new THREE.Group()
+    group.traverse((o) => {
+      const src = o as THREE.Mesh
+      if (!src.isMesh) return
+      const geo = src.geometry.clone()
+
+      // At BODY_OPACITY 0 the surfaces are fully invisible, so skip them
+      // entirely rather than paying to draw nothing — what's left is a pure
+      // wireframe of the mark.
+      if (SHATTER.BODY_OPACITY > 0) {
+        const surf = new THREE.Mesh(
+          geo,
+          bodyMats[src.name as keyof LogoMaterials] || bodyMats['logo-black'],
+        )
+        surf.position.copy(src.position)
+        surf.quaternion.copy(src.quaternion)
+        surf.scale.copy(src.scale)
+        surf.renderOrder = 0
+        body.add(surf)
+      }
+
+      const edges = new THREE.LineSegments(
+        new THREE.EdgesGeometry(geo, SHATTER.BODY_EDGE_ANGLE),
+        edgeMat,
+      )
+      edges.position.copy(src.position)
+      edges.quaternion.copy(src.quaternion)
+      edges.scale.copy(src.scale)
+      edges.renderOrder = 1
+      body.add(edges)
+
+      // EdgesGeometry has copied what it needs, so the clone is dead weight
+      // once nothing else references it.
+      if (SHATTER.BODY_OPACITY <= 0) geo.dispose()
+    })
+    return body
+  }
+
   /** Disable pointer/drag reactivity (reduced-motion): idle spin only. */
   setInteractive(v: boolean) {
     this.interactive = v
+  }
+
+  /**
+   * Arm hold-to-shatter. Called once the mesh is actually on screen so a press
+   * during the sketch-draw video can't trigger it.
+   */
+  setShatterArmed(v: boolean) {
+    this.shatter?.setArmed(v)
+  }
+
+  /** Discrete shatter transitions. Nothing subscribes yet — see spec §7.4. */
+  onShatter(cb: (e: ShatterEvent) => void): () => void {
+    return this.shatter?.onShatter(cb) ?? (() => {})
+  }
+
+  /** Continuous 0..1 charge, pulled rather than pushed to avoid per-frame allocation. */
+  getCharge(): number {
+    return this.shatter?.getCharge() ?? 0
   }
 
   private attach() {
@@ -97,6 +217,8 @@ export class LogoEngine {
     window.addEventListener('pointermove', this.onMove)
     this.canvas.addEventListener('pointerdown', this.onDown)
     window.addEventListener('pointerup', this.onUp)
+    window.addEventListener('pointercancel', this.onCancel)
+    window.addEventListener('blur', this.onCancel)
     this.canvas.addEventListener('keydown', this.onKey)
     this.canvas.tabIndex = 0
   }
@@ -107,6 +229,18 @@ export class LogoEngine {
     const ny = (e.clientY / window.innerHeight) * 2 - 1
     this.tilt.tx = ny * (12 * DEG) // deflect up to ±12°
     this.tilt.tz = -nx * (12 * DEG) * 0.5
+
+    // A press starts as a potential charge and only becomes a drag once the
+    // pointer travels past the threshold (spec §7.1). With no controller
+    // (reduced motion) any movement drags immediately, as it did before.
+    if (this.pointerActive && !this.dragging) {
+      const becameDrag = this.shatter ? this.shatter.pointerMove(e.clientX, e.clientY) : true
+      if (becameDrag) {
+        this.dragging = true
+        this.lastX = e.clientX
+      }
+    }
+
     if (this.dragging) {
       const dx = e.clientX - this.lastX
       this.lastX = e.clientX
@@ -118,12 +252,23 @@ export class LogoEngine {
 
   private onDown = (e: PointerEvent) => {
     if (!this.interactive) return
-    this.dragging = true
+    this.pointerActive = true
+    this.dragging = false
     this.lastX = e.clientX
+    this.shatter?.pointerDown(e.clientX, e.clientY)
   }
 
   private onUp = () => {
     this.dragging = false
+    this.pointerActive = false
+    this.shatter?.pointerUp()
+  }
+
+  /** pointercancel / window blur — never leave a blast stuck open. */
+  private onCancel = () => {
+    this.dragging = false
+    this.pointerActive = false
+    this.shatter?.cancel()
   }
 
   private onKey = (e: KeyboardEvent) => {
@@ -152,6 +297,18 @@ export class LogoEngine {
     this.tilt.z += (this.tilt.tz - this.tilt.z) * 0.06
     if (this.group) this.group.rotation.set(this.tilt.x, this.spinY, this.tilt.z)
 
+    // the light wash sweeps continuously, blast or no blast
+    if (this.shatterUniforms) this.shatterUniforms.uTime.value += dt
+
+    if (this.shatter) {
+      this.shatter.update(dt)
+      if (this.group) {
+        const v = this.shatter.getVibrateOffset()
+        this.group.position.x = v.x
+        this.group.position.y = this.baseY + v.y
+      }
+    }
+
     this.renderer.render(this.scene, this.camera)
     this.raf = requestAnimationFrame(this.tick)
   }
@@ -170,12 +327,18 @@ export class LogoEngine {
     window.removeEventListener('pointermove', this.onMove)
     this.canvas.removeEventListener('pointerdown', this.onDown)
     window.removeEventListener('pointerup', this.onUp)
+    window.removeEventListener('pointercancel', this.onCancel)
+    window.removeEventListener('blur', this.onCancel)
     this.canvas.removeEventListener('keydown', this.onKey)
+    this.shatter?.dispose()
+    this.shatter = null
     this.scene.traverse((o) => {
       const m = o as THREE.Mesh
       if (m.isMesh) m.geometry?.dispose()
     })
     if (this.materials) Object.values(this.materials).forEach((m) => m.dispose())
+    this.bodyMaterials.forEach((m) => m.dispose())
+    this.bodyMaterials = []
     this.renderer.dispose()
   }
 }
