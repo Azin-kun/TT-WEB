@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { SHATTER, mulberry32 } from './types'
+import { mulberry32, type SeparationConfig } from './types'
 
 /**
  * Tags the logo's geometry so its faces can detach as whole panels, and writes
@@ -10,10 +10,11 @@ import { SHATTER, mulberry32 } from './types'
  *
  * There is deliberately NO subdivision here. Frame-by-frame observation of
  * trionn.com (2026-08-08) showed its faces leave as large intact planes, not as
- * fragments — so each cap becomes exactly one panel. For this logo that means
- * four: front and back of the black stroke, front and back of the red one. The
- * extruded side walls are never tagged, so they stay put and read as the hollow
- * body once the caps have gone.
+ * fragments — so each mesh becomes exactly three panels: front cap, back cap
+ * and the extruded side band. For this logo (black stroke + red stroke) that's
+ * six panels total, and every one of them sheds. What remains once they've all
+ * left is a separate, intact translucent body built in LogoEngine — not
+ * anything retained from this partition.
  */
 
 export type PartitionResult = {
@@ -46,7 +47,11 @@ type Panel = {
 
 const IDENTITY = new THREE.Matrix4()
 
-export function partitionForShatter(root: THREE.Object3D, seedValue = 0x7a3b1c): PartitionResult {
+export function partitionForShatter(
+  root: THREE.Object3D,
+  config: SeparationConfig,
+  seedValue = 0x7a3b1c,
+): PartitionResult {
   const meshes: THREE.Mesh[] = []
   root.traverse((o) => {
     if ((o as THREE.Mesh).isMesh) meshes.push(o as THREE.Mesh)
@@ -95,11 +100,11 @@ export function partitionForShatter(root: THREE.Object3D, seedValue = 0x7a3b1c):
       count: 0,
       kind: i % KINDS_PER_MESH,
       axis,
-      spin: SHATTER.SPIN_MIN + rand() * (SHATTER.SPIN_MAX - SHATTER.SPIN_MIN),
-      delay: SHATTER.SEPARATE_START + rand() * SHATTER.STAGGER_MAX,
-      spreadMul: 1 + (rand() * 2 - 1) * SHATTER.SPREAD_VAR,
-      lateralX: (rand() * 2 - 1) * SHATTER.LATERAL_DRIFT,
-      lateralY: (rand() * 2 - 1) * SHATTER.LATERAL_DRIFT,
+      spin: config.SPIN_MIN + rand() * (config.SPIN_MAX - config.SPIN_MIN),
+      delay: config.SEPARATE_START + rand() * config.STAGGER_MAX,
+      spreadMul: 1 + (rand() * 2 - 1) * config.SPREAD_VAR,
+      lateralX: (rand() * 2 - 1) * config.LATERAL_DRIFT,
+      lateralY: (rand() * 2 - 1) * config.LATERAL_DRIFT,
     })
   }
 
@@ -107,7 +112,7 @@ export function partitionForShatter(root: THREE.Object3D, seedValue = 0x7a3b1c):
   const perMesh: {
     mesh: THREE.Mesh
     geo: THREE.BufferGeometry
-    panelOf: Int16Array // -1 = side wall, stays put
+    panelOf: Int16Array // panel index for each triangle; every triangle belongs to a real panel
   }[] = []
 
   meshes.forEach((mesh, meshIndex) => {
@@ -137,7 +142,7 @@ export function partitionForShatter(root: THREE.Object3D, seedValue = 0x7a3b1c):
       const nzn = nz / nl
 
       const kind =
-        Math.abs(nzn) < SHATTER.CAP_NORMAL_MIN ? SIDE_BAND : nzn > 0 ? FRONT_CAP : BACK_CAP
+        Math.abs(nzn) < config.CAP_NORMAL_MIN ? SIDE_BAND : nzn > 0 ? FRONT_CAP : BACK_CAP
       const p = meshIndex * KINDS_PER_MESH + kind
       panelOf[t] = p
       panels[p].sumX += (pos.getX(i) + pos.getX(i + 1) + pos.getX(i + 2)) / 3

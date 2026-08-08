@@ -1,4 +1,4 @@
-import { getWorks, getServices, getManifesto, type Locale } from '../../lib/cms'
+import { getWorks, getServices, getManifesto, getHeroEffects, type Locale } from '../../lib/cms'
 import type { Page, SiteSetting } from '../../payload-types'
 import { HeroBlock } from './HeroBlock'
 import { ManifestoStrip } from './ManifestoStrip'
@@ -6,6 +6,7 @@ import { FeaturedWorks } from './FeaturedWorks'
 import { ServicesRows } from './ServicesRows'
 import { ArchiveTeaser } from './ArchiveTeaser'
 import { ContactMailto } from './ContactMailto'
+import { resolveSeparation } from '../../lib/three/shatter/resolveSeparation'
 
 type Blocks = NonNullable<Page['layout']>
 
@@ -23,7 +24,8 @@ export async function RenderBlocks({
       {await Promise.all(
         blocks.map(async (block) => {
           switch (block.blockType) {
-            case 'hero':
+            case 'hero': {
+              const effects = await getHeroEffects()
               return (
                 <HeroBlock
                   key={block.id}
@@ -32,11 +34,13 @@ export async function RenderBlocks({
                   locationLine={block.locationLine}
                   scrollCue={block.scrollCue}
                   constellationEnabled={block.constellationEnabled ?? true}
+                  separation={resolveSeparation(effects)}
                   floatingWords={(block.floatingWords || [])
                     .map((w) => w.word)
                     .filter((w): w is string => !!w)}
                 />
               )
+            }
 
             case 'manifestoStrip': {
               const statements = await getManifesto(locale)

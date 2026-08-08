@@ -1,18 +1,51 @@
 import type * as THREE from 'three'
 
 /**
- * Tuning constants for the hold-to-separate effect.
+ * Default tuning for the hold-to-separate effect.
  * Spec: docs/superpowers/specs/2026-08-08-hero-logo-shatter-design.md §7.2
  *
- * Deliberately a mutable object, not `as const` — the dev preview page at
- * /[locale]/dev/shatter writes to these live so the owner can dial the feel in
- * without a rebuild. Whatever values get approved there become the defaults here.
+ * Frozen. Live values come from the `hero-effects` Payload global and are
+ * merged over these by resolveSeparation(); the dev bench at
+ * /[locale]/dev/shatter keeps its own mutable copy for tuning and can write
+ * approved values back to that global.
  *
  * Model corrected 2026-08-08 after frame-by-frame observation of trionn.com:
- * faces do NOT fragment. Whole intact panels detach and drift apart slowly,
- * leaving the extruded side walls behind as a hollow body.
+ * faces do NOT fragment. Whole intact panels detach and drift apart slowly —
+ * every face of the outer skin sheds, leaving a separate intact body behind.
  */
-export const SHATTER = {
+export type SeparationConfig = {
+  ENABLED: boolean
+  CHARGE_MS: number
+  REFORM_MS: number
+  DRAG_THRESHOLD_PX: number
+  SEPARATE_START: number
+  STAGGER_MAX: number
+  CAP_NORMAL_MIN: number
+  SPREAD_FRAC: number
+  SPREAD_VAR: number
+  LATERAL_DRIFT: number
+  SPIN_MIN: number
+  SPIN_MAX: number
+  NORMAL_FOLLOW: number
+  HATCH_STRENGTH: number
+  HATCH_SCALE: number
+  SHINE_STRENGTH: number
+  SHINE_WIDTH: number
+  SHINE_SPEED: number
+  SHINE_CHARGE_BOOST: number
+  SHINE_WARM: number
+  SHINE_BRIGHT: number
+  VIBRATE_FRAC: number
+  VIBRATE_PHASE_STEP: number
+  SCROLL_DISARM_FRAC: number
+  SKIN_OPACITY: number
+  BODY_OPACITY: number
+  BODY_EDGE_OPACITY: number
+  BODY_EDGE_ANGLE: number
+}
+
+export const DEFAULT_SEPARATION: Readonly<SeparationConfig> = Object.freeze({
+  ENABLED: true,
   /** ms of holding to go from intact to fully separated */
   CHARGE_MS: 950,
   /**
@@ -114,7 +147,7 @@ export const SHATTER = {
 
   /** refuse to start charging once scrolled past this fraction of viewport height */
   SCROLL_DISARM_FRAC: 0.15,
-}
+})
 
 /** Discrete transitions. The continuous charge value is pulled via getCharge(). */
 export type ShatterEvent = 'blast' | 'reform' | 'idle'

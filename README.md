@@ -34,6 +34,11 @@ npm run seed          # admin user, settings, statements, services, works, home 
 npm run seed:verify   # sanity-check counts + a couple of localized values
 ```
 
+`unstable_cache` writes to disk at `.next/cache/`, and `revalidateTag` cannot
+fire from a seed script — so after seeding run `rm -rf .next/cache` or the site
+will keep serving the previous values. Publishing from `/admin` revalidates
+correctly and needs no manual step.
+
 `payload run` doesn't work in non-TTY shells on this machine, so seed/verify
 run via `node --env-file=.env --import tsx src/seed/*.ts` instead (see
 `package.json`).
@@ -82,6 +87,13 @@ migration in production). No other file references the DB adapter.
 - **Global:** `site-settings` (nav labels, contact info). The site ships a
   single Atelier appearance — no appearance-switch labels or transition
   kill-switch.
+- **Global:** `hero-effects` — physics and material settings for the hero logo
+  separation (hold the logo to pull it apart). Not localized. All 26 editable
+  values (24 numeric + 2 hex colours) are range-clamped to match the dev
+  tuning bench at `/[locale]/dev/shatter`, which can write back to this global
+  with its "save to CMS" button. `separationEnabled` disables the interaction
+  only — the glass skin, pencil hatching, light wash and wireframe ghost all
+  remain.
 - All text-bearing fields are `localized: true` (`en` default, `id`
   secondary). A page's block **layout** (which blocks, in what order) is
   shared across locales; the text *inside* each block is per-locale.

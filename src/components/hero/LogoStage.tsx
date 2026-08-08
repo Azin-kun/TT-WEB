@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
 import { SketchIntro } from './SketchIntro'
+import type { SeparationConfig } from '../../lib/three/shatter/types'
 
 // next/dynamic(ssr:false) keeps three.js out of the base bundle.
 const LogoCanvas = dynamic(() => import('../three/LogoCanvas'), {
@@ -22,17 +23,20 @@ const CANVAS_READY_FALLBACK_MS = 4000
 export function LogoStage({
   onLive,
   onIntroPlayStart,
+  separation,
 }: {
   onLive?: () => void
   onIntroPlayStart?: () => void
+  separation: SeparationConfig
 }) {
   const [introDone, setIntroDone] = useState(false)
   const [canvasReady, setCanvasReady] = useState(false)
+  const live = introDone && canvasReady
 
   // signal consumers (constellation entrance) once the 3D logo is truly on screen
   useEffect(() => {
-    if (introDone && canvasReady) onLive?.()
-  }, [introDone, canvasReady, onLive])
+    if (live) onLive?.()
+  }, [live, onLive])
 
   useEffect(() => {
     if (!introDone || canvasReady) return
@@ -49,11 +53,11 @@ export function LogoStage({
         style={{
           position: 'absolute',
           inset: 0,
-          opacity: introDone && canvasReady ? 1 : introDone ? 0.001 : 0,
+          opacity: live ? 1 : introDone ? 0.001 : 0,
           transition: 'opacity 0.6s ease',
         }}
       >
-        <LogoCanvas onReady={() => setCanvasReady(true)} />
+        <LogoCanvas onReady={() => setCanvasReady(true)} config={separation} armed={live} />
       </div>
       <SketchIntro onDone={() => setIntroDone(true)} onPlayStart={onIntroPlayStart} />
     </div>

@@ -5,7 +5,7 @@ import { makePencilMaterials, type LogoMaterials } from './materials'
 import { partitionForShatter } from './shatter/partition'
 import { makeShatterUniforms, patchForShatter } from './shatter/shatterMaterial'
 import { ShatterController } from './shatter/ShatterController'
-import { SHATTER, type ShatterEvent, type ShatterUniforms } from './shatter/types'
+import { DEFAULT_SEPARATION, type SeparationConfig, type ShatterEvent, type ShatterUniforms } from './shatter/types'
 
 const DEG = Math.PI / 180
 const IDLE_W = (Math.PI * 2) / 14 // one revolution ≈ 14 s, +Y = CCW from above (spec §7)
@@ -45,8 +45,14 @@ export class LogoEngine {
   private bodyMaterials: THREE.Material[] = []
   private pointerActive = false
   private baseY = 0
+  private wantArmed = false
+  private downX = 0
+  private downY = 0
 
-  constructor(private canvas: HTMLCanvasElement) {
+  constructor(
+    private canvas: HTMLCanvasElement,
+    private config: SeparationConfig = DEFAULT_SEPARATION,
+  ) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping
@@ -89,23 +95,32 @@ export class LogoEngine {
     this.baseY = group.position.y
 
     // Hold-to-shatter. Skipped entirely under reduced motion, which also avoids
-    // generating the ~1.9 MB of per-vertex attributes.
+    // generating the ~2.8 MB of per-vertex attributes.
     if (this.interactive) {
       // The intact translucent body that stays once the skin has fully shed.
       // Built from CLONED geometry BEFORE partitioning, because partition
       // replaces the originals and disposes them.
       const body = this.buildInnerBody(group)
 
-      const part = partitionForShatter(group)
-      const u = makeShatterUniforms(part.center, part.height * SHATTER.SPREAD_FRAC)
+      // Partition only when the interaction is on: it costs ~2.8 MB of vertex
+      // attributes. uCenter/uSpread are read solely by the vertex patch, which
+      // is skipped in the same case, so the zero fallbacks are never sampled.
+      const part = this.config.ENABLED ? partitionForShatter(group, this.config) : null
+      const u = makeShatterUniforms(
+        part?.center ?? new THREE.Vector3(),
+        part ? part.height * this.config.SPREAD_FRAC : 0,
+        this.config,
+      )
+
       Object.values(set).forEach((m) => {
         // The skin is glass: sheer, and both sides visible as panels turn.
         m.side = THREE.DoubleSide
         m.transparent = true
-        m.opacity = SHATTER.SKIN_OPACITY
+        m.opacity = this.config.SKIN_OPACITY
         m.depthWrite = false
-        patchForShatter(m, u)
+        patchForShatter(m, u, this.config)
       })
+
       // skin draws over the body; body surfaces under their own edges
       group.traverse((o) => {
         if ((o as THREE.Mesh).isMesh) o.renderOrder = 2
@@ -113,9 +128,13 @@ export class LogoEngine {
       // parented to the group, so it inherits the idle spin, tilt and shake
       group.add(body)
       this.shatterUniforms = u
-      // vibration is applied to group.position, which is in world units — so it
-      // scales off the RENDERED height, not the geometry height used by uSpread
-      this.shatter = new ShatterController(u, heightFrac * visH)
+
+      // No controller when disabled (separationEnabled: false) or under reduced
+      // motion — nothing can charge, so nothing can move.
+      if (part) {
+        this.shatter = new ShatterController(u, heightFrac * visH, this.config)
+        this.shatter.setArmed(this.wantArmed)
+      }
     }
 
     this.scene.add(group)
@@ -138,14 +157,14 @@ export class LogoEngine {
     const bodyMats = makePencilMaterials()
     Object.values(bodyMats).forEach((m) => {
       m.transparent = true
-      m.opacity = SHATTER.BODY_OPACITY
+      m.opacity = this.config.BODY_OPACITY
       m.depthWrite = false
       m.side = THREE.DoubleSide
     })
     const edgeMat = new THREE.LineBasicMaterial({
       color: 0x2b2a27,
       transparent: true,
-      opacity: SHATTER.BODY_EDGE_OPACITY,
+      opacity: this.config.BODY_EDGE_OPACITY,
       depthWrite: false,
     })
     this.bodyMaterials = [...Object.values(bodyMats), edgeMat]
@@ -159,7 +178,7 @@ export class LogoEngine {
       // At BODY_OPACITY 0 the surfaces are fully invisible, so skip them
       // entirely rather than paying to draw nothing — what's left is a pure
       // wireframe of the mark.
-      if (SHATTER.BODY_OPACITY > 0) {
+      if (this.config.BODY_OPACITY > 0) {
         const surf = new THREE.Mesh(
           geo,
           bodyMats[src.name as keyof LogoMaterials] || bodyMats['logo-black'],
@@ -172,7 +191,7 @@ export class LogoEngine {
       }
 
       const edges = new THREE.LineSegments(
-        new THREE.EdgesGeometry(geo, SHATTER.BODY_EDGE_ANGLE),
+        new THREE.EdgesGeometry(geo, this.config.BODY_EDGE_ANGLE),
         edgeMat,
       )
       edges.position.copy(src.position)
@@ -183,7 +202,7 @@ export class LogoEngine {
 
       // EdgesGeometry has copied what it needs, so the clone is dead weight
       // once nothing else references it.
-      if (SHATTER.BODY_OPACITY <= 0) geo.dispose()
+      if (this.config.BODY_OPACITY <= 0) geo.dispose()
     })
     return body
   }
@@ -196,8 +215,14 @@ export class LogoEngine {
   /**
    * Arm hold-to-shatter. Called once the mesh is actually on screen so a press
    * during the sketch-draw video can't trigger it.
+   *
+   * Records the intent even if the mesh has not finished loading — `load()`
+   * applies it when the controller is created. Without that, a slow load
+   * (cold cache, Draco wasm) that finishes after the caller arms would
+   * silently leave the interaction dead.
    */
   setShatterArmed(v: boolean) {
+    this.wantArmed = v
     this.shatter?.setArmed(v)
   }
 
@@ -232,9 +257,12 @@ export class LogoEngine {
 
     // A press starts as a potential charge and only becomes a drag once the
     // pointer travels past the threshold (spec §7.1). With no controller
-    // (reduced motion) any movement drags immediately, as it did before.
+    // (reduced motion, or separationEnabled: false) the same threshold is
+    // applied here instead, so drag-to-spin keeps its usual feel.
     if (this.pointerActive && !this.dragging) {
-      const becameDrag = this.shatter ? this.shatter.pointerMove(e.clientX, e.clientY) : true
+      const becameDrag = this.shatter
+        ? this.shatter.pointerMove(e.clientX, e.clientY)
+        : this.pastDragThreshold(e.clientX, e.clientY)
       if (becameDrag) {
         this.dragging = true
         this.lastX = e.clientX
@@ -250,11 +278,20 @@ export class LogoEngine {
     }
   }
 
+  /** Same squared-distance test as ShatterController.pointerMove, used when there is no controller to ask. */
+  private pastDragThreshold(x: number, y: number): boolean {
+    const dx = x - this.downX
+    const dy = y - this.downY
+    return dx * dx + dy * dy > this.config.DRAG_THRESHOLD_PX * this.config.DRAG_THRESHOLD_PX
+  }
+
   private onDown = (e: PointerEvent) => {
     if (!this.interactive) return
     this.pointerActive = true
     this.dragging = false
     this.lastX = e.clientX
+    this.downX = e.clientX
+    this.downY = e.clientY
     this.shatter?.pointerDown(e.clientX, e.clientY)
   }
 

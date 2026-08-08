@@ -97,9 +97,11 @@ export interface Config {
   fallbackLocale: ('false' | 'none' | 'null') | false | null | ('en' | 'id') | ('en' | 'id')[];
   globals: {
     'site-settings': SiteSetting;
+    'hero-effects': HeroEffect;
   };
   globalsSelect: {
     'site-settings': SiteSettingsSelect<false> | SiteSettingsSelect<true>;
+    'hero-effects': HeroEffectsSelect<false> | HeroEffectsSelect<true>;
   };
   locale: 'en' | 'id';
   widgets: {
@@ -744,6 +746,100 @@ export interface SiteSetting {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "hero-effects".
+ */
+export interface HeroEffect {
+  id: number;
+  /**
+   * Lets visitors press and hold the logo to pull it apart. Turning this off keeps the glass look, hatching and light wash — it only disables the interaction.
+   */
+  separationEnabled?: boolean | null;
+  /**
+   * How long the charge and the reassembly take
+   */
+  timing?: {
+    chargeMs?: number | null;
+    reformMs?: number | null;
+    /**
+     * Fraction of the charge that passes before anything moves
+     */
+    separateStart?: number | null;
+    staggerMax?: number | null;
+  };
+  /**
+   * How far and how the six faces travel
+   */
+  motion?: {
+    /**
+     * Drift distance as a multiple of logo height. Above ~1.0 the faces leave the screen before you can watch them.
+     */
+    spreadFrac?: number | null;
+    spreadVar?: number | null;
+    lateralDrift?: number | null;
+    spinMin?: number | null;
+    spinMax?: number | null;
+    /**
+     * Cutoff deciding whether a surface is a flat face or a side wall
+     */
+    capNormalMin?: number | null;
+  };
+  /**
+   * Pencil hatching and the sweeping light wash
+   */
+  material?: {
+    normalFollow?: number | null;
+    hatchStrength?: number | null;
+    /**
+     * Higher = coarser strokes, lower = denser
+     */
+    hatchScale?: number | null;
+    shineStrength?: number | null;
+    shineWidth?: number | null;
+    shineSpeed?: number | null;
+    shineChargeBoost?: number | null;
+    /**
+     * Warm end of the light wash, 6-digit hex
+     */
+    shineWarm?: string | null;
+    /**
+     * Hot end of the light wash, 6-digit hex
+     */
+    shineBright?: string | null;
+  };
+  /**
+   * The glass skin and the ghost logo left behind
+   */
+  body?: {
+    /**
+     * Below ~0.5 the black and red wash out against the paper background.
+     */
+    skinOpacity?: number | null;
+    /**
+     * At 0 only the wireframe outline of the ghost logo is drawn
+     */
+    bodyOpacity?: number | null;
+    bodyEdgeOpacity?: number | null;
+    /**
+     * Degrees. Lower draws more edges and gets noisy quickly.
+     */
+    bodyEdgeAngle?: number | null;
+  };
+  /**
+   * Shake while charging, and drag sensitivity
+   */
+  feel?: {
+    vibrateFrac?: number | null;
+    vibratePhaseStep?: number | null;
+    /**
+     * Pointer travel that turns a hold into a drag
+     */
+    dragThresholdPx?: number | null;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "site-settings_select".
  */
 export interface SiteSettingsSelect<T extends boolean = true> {
@@ -771,6 +867,62 @@ export interface SiteSettingsSelect<T extends boolean = true> {
     | {
         title?: T;
         description?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "hero-effects_select".
+ */
+export interface HeroEffectsSelect<T extends boolean = true> {
+  separationEnabled?: T;
+  timing?:
+    | T
+    | {
+        chargeMs?: T;
+        reformMs?: T;
+        separateStart?: T;
+        staggerMax?: T;
+      };
+  motion?:
+    | T
+    | {
+        spreadFrac?: T;
+        spreadVar?: T;
+        lateralDrift?: T;
+        spinMin?: T;
+        spinMax?: T;
+        capNormalMin?: T;
+      };
+  material?:
+    | T
+    | {
+        normalFollow?: T;
+        hatchStrength?: T;
+        hatchScale?: T;
+        shineStrength?: T;
+        shineWidth?: T;
+        shineSpeed?: T;
+        shineChargeBoost?: T;
+        shineWarm?: T;
+        shineBright?: T;
+      };
+  body?:
+    | T
+    | {
+        skinOpacity?: T;
+        bodyOpacity?: T;
+        bodyEdgeOpacity?: T;
+        bodyEdgeAngle?: T;
+      };
+  feel?:
+    | T
+    | {
+        vibrateFrac?: T;
+        vibratePhaseStep?: T;
+        dragThresholdPx?: T;
       };
   updatedAt?: T;
   createdAt?: T;
