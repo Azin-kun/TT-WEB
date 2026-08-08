@@ -12,7 +12,39 @@ import type * as THREE from 'three'
  * faces do NOT fragment. Whole intact panels detach and drift apart slowly,
  * leaving the extruded side walls behind as a hollow body.
  */
-export const SHATTER = {
+export type SeparationConfig = {
+  ENABLED: boolean
+  CHARGE_MS: number
+  REFORM_MS: number
+  DRAG_THRESHOLD_PX: number
+  SEPARATE_START: number
+  STAGGER_MAX: number
+  CAP_NORMAL_MIN: number
+  SPREAD_FRAC: number
+  SPREAD_VAR: number
+  LATERAL_DRIFT: number
+  SPIN_MIN: number
+  SPIN_MAX: number
+  NORMAL_FOLLOW: number
+  HATCH_STRENGTH: number
+  HATCH_SCALE: number
+  SHINE_STRENGTH: number
+  SHINE_WIDTH: number
+  SHINE_SPEED: number
+  SHINE_CHARGE_BOOST: number
+  SHINE_WARM: number
+  SHINE_BRIGHT: number
+  VIBRATE_FRAC: number
+  VIBRATE_PHASE_STEP: number
+  SCROLL_DISARM_FRAC: number
+  SKIN_OPACITY: number
+  BODY_OPACITY: number
+  BODY_EDGE_OPACITY: number
+  BODY_EDGE_ANGLE: number
+}
+
+export const DEFAULT_SEPARATION: Readonly<SeparationConfig> = Object.freeze({
+  ENABLED: true,
   /** ms of holding to go from intact to fully separated */
   CHARGE_MS: 950,
   /**
@@ -114,7 +146,7 @@ export const SHATTER = {
 
   /** refuse to start charging once scrolled past this fraction of viewport height */
   SCROLL_DISARM_FRAC: 0.15,
-}
+})
 
 /** Discrete transitions. The continuous charge value is pulled via getCharge(). */
 export type ShatterEvent = 'blast' | 'reform' | 'idle'
