@@ -63,6 +63,55 @@ for (const key of Object.keys(DEFAULT_SEPARATION) as (keyof typeof DEFAULT_SEPAR
   check(`round trip ${key}`, round[key] === DEFAULT_SEPARATION[key])
 }
 
+// The round trip above is a near-tautology: DEFAULT_SEPARATION round-tripped
+// against itself passes even for a field toHeroEffectsPayload never writes,
+// or that resolveSeparation reads from the wrong CMS group — the value just
+// falls back to the same default on both sides. Round-trip a config where
+// EVERY CMS-mapped field is perturbed to a distinct, in-range, non-default
+// value so a dropped or misrouted field actually shows up as a mismatch.
+// SCROLL_DISARM_FRAC is deliberately excluded — it is not CMS-mapped and
+// always comes from defaults (see resolveSeparation).
+const PERTURBED: typeof DEFAULT_SEPARATION = {
+  ...DEFAULT_SEPARATION,
+  ENABLED: false,
+  CHARGE_MS: 1800,
+  REFORM_MS: 1200,
+  SEPARATE_START: 0.4,
+  STAGGER_MAX: 0.35,
+  SPREAD_FRAC: 1.1,
+  SPREAD_VAR: 0.45,
+  LATERAL_DRIFT: 1.2,
+  SPIN_MIN: 0.3, // spinMin < spinMax so normalisation does not swap them
+  SPIN_MAX: 0.9,
+  CAP_NORMAL_MIN: 0.6,
+  NORMAL_FOLLOW: 0.2,
+  HATCH_STRENGTH: 0.9,
+  HATCH_SCALE: 2.5,
+  SHINE_STRENGTH: 0.75,
+  SHINE_WIDTH: 0.4,
+  SHINE_SPEED: 2.1,
+  SHINE_CHARGE_BOOST: 3,
+  SHINE_WARM: 0x123456,
+  SHINE_BRIGHT: 0xabcdef,
+  SKIN_OPACITY: 0.85,
+  BODY_OPACITY: 0.5,
+  BODY_EDGE_OPACITY: 0.3,
+  BODY_EDGE_ANGLE: 45,
+  VIBRATE_FRAC: 0.02,
+  VIBRATE_PHASE_STEP: 2.2,
+  DRAG_THRESHOLD_PX: 12,
+}
+
+const round2 = resolveSeparation(toHeroEffectsPayload(PERTURBED))
+for (const key of Object.keys(PERTURBED) as (keyof typeof PERTURBED)[]) {
+  if (key === 'SCROLL_DISARM_FRAC') continue
+  check(`round trip (perturbed, non-default) ${key}`, round2[key] === PERTURBED[key])
+}
+check(
+  'round trip (perturbed) SCROLL_DISARM_FRAC stays default (not CMS-mapped)',
+  round2.SCROLL_DISARM_FRAC === DEFAULT_SEPARATION.SCROLL_DISARM_FRAC,
+)
+
 // defaults are frozen
 check(
   'defaults frozen',

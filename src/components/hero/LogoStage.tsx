@@ -27,15 +27,16 @@ export function LogoStage({
 }: {
   onLive?: () => void
   onIntroPlayStart?: () => void
-  separation?: SeparationConfig
+  separation: SeparationConfig
 }) {
   const [introDone, setIntroDone] = useState(false)
   const [canvasReady, setCanvasReady] = useState(false)
+  const live = introDone && canvasReady
 
   // signal consumers (constellation entrance) once the 3D logo is truly on screen
   useEffect(() => {
-    if (introDone && canvasReady) onLive?.()
-  }, [introDone, canvasReady, onLive])
+    if (live) onLive?.()
+  }, [live, onLive])
 
   useEffect(() => {
     if (!introDone || canvasReady) return
@@ -52,15 +53,11 @@ export function LogoStage({
         style={{
           position: 'absolute',
           inset: 0,
-          opacity: introDone && canvasReady ? 1 : introDone ? 0.001 : 0,
+          opacity: live ? 1 : introDone ? 0.001 : 0,
           transition: 'opacity 0.6s ease',
         }}
       >
-        <LogoCanvas
-          onReady={() => setCanvasReady(true)}
-          config={separation}
-          armed={introDone && canvasReady}
-        />
+        <LogoCanvas onReady={() => setCanvasReady(true)} config={separation} armed={live} />
       </div>
       <SketchIntro onDone={() => setIntroDone(true)} onPlayStart={onIntroPlayStart} />
     </div>

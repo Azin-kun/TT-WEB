@@ -46,8 +46,10 @@ vec3 tt_rotAxis(vec3 v, vec3 axis, float a){
   return v * c + cross(axis, v) * s + axis * dot(axis, v) * (1.0 - c);
 }
 
-// aParams.w gates the whole thing: side-wall triangles get 0 and never move,
-// which is what leaves the hollow body standing once the caps have gone.
+// aParams.w is always 1 now — every panel (caps and side band alike) sheds.
+// It stays in the layout so the shader keeps one code path; the separate
+// translucent body that remains once the skin is gone is a different mesh,
+// built in LogoEngine, not something held back here.
 float tt_shardT(){
   return clamp((uBlast - aParams.y) / max(1e-4, 1.0 - aParams.y), 0.0, 1.0) * aParams.w;
 }

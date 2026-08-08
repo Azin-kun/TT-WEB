@@ -12,7 +12,7 @@ type Props = {
   locationLine?: string | null
   scrollCue?: string | null
   constellationEnabled?: boolean
-  separation?: SeparationConfig
+  separation: SeparationConfig
   floatingWords?: string[]
 }
 

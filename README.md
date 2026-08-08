@@ -88,11 +88,12 @@ migration in production). No other file references the DB adapter.
   single Atelier appearance — no appearance-switch labels or transition
   kill-switch.
 - **Global:** `hero-effects` — physics and material settings for the hero logo
-  separation (hold the logo to pull it apart). Not localized. All 24 values are
-  range-clamped to match the dev tuning bench at `/[locale]/dev/shatter`, which
-  can write back to this global with its "save to CMS" button.
-  `separationEnabled` disables the interaction only — the glass skin, pencil
-  hatching, light wash and wireframe ghost all remain.
+  separation (hold the logo to pull it apart). Not localized. All 26 editable
+  values (24 numeric + 2 hex colours) are range-clamped to match the dev
+  tuning bench at `/[locale]/dev/shatter`, which can write back to this global
+  with its "save to CMS" button. `separationEnabled` disables the interaction
+  only — the glass skin, pencil hatching, light wash and wireframe ghost all
+  remain.
 - All text-bearing fields are `localized: true` (`en` default, `id`
   secondary). A page's block **layout** (which blocks, in what order) is
   shared across locales; the text *inside* each block is per-locale.

@@ -9,7 +9,8 @@ const hexColour = (value: unknown) =>
 
 /**
  * Physics and material settings for the hero logo separation.
- * NOT localized — these are numbers, identical in EN and ID.
+ * NOT localized — identical in EN and ID (mostly numbers; shineWarm and
+ * shineBright are hex colour strings).
  * Ranges mirror the dev bench sliders at /[locale]/dev/shatter and are enforced
  * by Payload on the REST API as well as in the admin UI.
  */

@@ -45,6 +45,9 @@ export class LogoEngine {
   private bodyMaterials: THREE.Material[] = []
   private pointerActive = false
   private baseY = 0
+  private wantArmed = false
+  private downX = 0
+  private downY = 0
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -92,7 +95,7 @@ export class LogoEngine {
     this.baseY = group.position.y
 
     // Hold-to-shatter. Skipped entirely under reduced motion, which also avoids
-    // generating the ~1.9 MB of per-vertex attributes.
+    // generating the ~2.8 MB of per-vertex attributes.
     if (this.interactive) {
       // The intact translucent body that stays once the skin has fully shed.
       // Built from CLONED geometry BEFORE partitioning, because partition
@@ -126,9 +129,11 @@ export class LogoEngine {
       group.add(body)
       this.shatterUniforms = u
 
-      // No controller when disabled — nothing can charge, so nothing can move.
+      // No controller when disabled (separationEnabled: false) or under reduced
+      // motion — nothing can charge, so nothing can move.
       if (part) {
         this.shatter = new ShatterController(u, heightFrac * visH, this.config)
+        this.shatter.setArmed(this.wantArmed)
       }
     }
 
@@ -210,8 +215,14 @@ export class LogoEngine {
   /**
    * Arm hold-to-shatter. Called once the mesh is actually on screen so a press
    * during the sketch-draw video can't trigger it.
+   *
+   * Records the intent even if the mesh has not finished loading — `load()`
+   * applies it when the controller is created. Without that, a slow load
+   * (cold cache, Draco wasm) that finishes after the caller arms would
+   * silently leave the interaction dead.
    */
   setShatterArmed(v: boolean) {
+    this.wantArmed = v
     this.shatter?.setArmed(v)
   }
 
@@ -246,9 +257,12 @@ export class LogoEngine {
 
     // A press starts as a potential charge and only becomes a drag once the
     // pointer travels past the threshold (spec §7.1). With no controller
-    // (reduced motion) any movement drags immediately, as it did before.
+    // (reduced motion, or separationEnabled: false) the same threshold is
+    // applied here instead, so drag-to-spin keeps its usual feel.
     if (this.pointerActive && !this.dragging) {
-      const becameDrag = this.shatter ? this.shatter.pointerMove(e.clientX, e.clientY) : true
+      const becameDrag = this.shatter
+        ? this.shatter.pointerMove(e.clientX, e.clientY)
+        : this.pastDragThreshold(e.clientX, e.clientY)
       if (becameDrag) {
         this.dragging = true
         this.lastX = e.clientX
@@ -264,11 +278,20 @@ export class LogoEngine {
     }
   }
 
+  /** Same squared-distance test as ShatterController.pointerMove, used when there is no controller to ask. */
+  private pastDragThreshold(x: number, y: number): boolean {
+    const dx = x - this.downX
+    const dy = y - this.downY
+    return dx * dx + dy * dy > this.config.DRAG_THRESHOLD_PX * this.config.DRAG_THRESHOLD_PX
+  }
+
   private onDown = (e: PointerEvent) => {
     if (!this.interactive) return
     this.pointerActive = true
     this.dragging = false
     this.lastX = e.clientX
+    this.downX = e.clientX
+    this.downY = e.clientY
     this.shatter?.pointerDown(e.clientX, e.clientY)
   }
 
