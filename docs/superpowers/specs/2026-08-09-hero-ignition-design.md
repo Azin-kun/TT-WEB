@@ -34,6 +34,61 @@ the signal it will subscribe to.
 | Build approach | **Both** the live WebGL module *and* a Kling video version, to compare and choose later |
 | Credits | **Conserve.** 128 available, VIP Standard |
 
+## 2b. Scope extension — morph cage and hold pulses (owner, 2026-08-09, after seeing the built ignition)
+
+The ignition shipped in §3–§4 is kept exactly as designed. Two things are added around it.
+
+### 2b.1 The cage becomes one continuous object across the whole hero
+
+```
+sphere over the extruding sketch → blooms to an OCTAGON → morphs home into the
+logo wireframe → charge front + wake (the existing ignition) → fades
+```
+
+There is **one cage object**, not two. "Slowly vanish when the ignited logo shows up" is satisfied by the
+morph itself rather than by fading out a second object.
+
+**Measured from the reference** (`Transition-3d-sketch-to-3d-rotating.mp4`, silhouette isolated per frame):
+
+| | |
+|---|---|
+| Shape | round blob (f0–f12) → six-sided outline emerging (f24) → clear **hexagon** (f32+) |
+| Median silhouette radius | **68 px → 119 px** |
+| Expansion | **1.75× its own starting radius** |
+| Bloom timing | t ≈ 0.7 – 1.2 s |
+
+**This corrects §3.4's earlier claim that the cage is rigid.** That claim came from a bounding-box
+measurement whose window was clamped on two sides, so it tracked only the right edge. The cage does bloom.
+The owner identified this from the video before the measurement confirmed it.
+
+**Owner decisions:** ours blooms to an **octagon**, not a hexagon. Sphere starts at **1.15× the logo**, and
+blooms to **1.7× the sphere's own diameter** (≈1.96× the logo). Sphere appears **1 s before the video ends**.
+All three are CMS fields.
+
+### 2b.2 The sphere costs no extra geometry
+
+The sphere is generated **from the logo's own cage**: each cage vertex is pushed along its direction from the
+centre onto a sphere. That projected set *is* the sphere cage — same vertices, same buffer, same single draw
+call. The bloom is a radius change; the morph home is a lerp back to true positions.
+
+Consequences worth stating: every vertex has a defined destination, so the morph cannot tear or mismatch; and
+the shape targets are all computable in the shader from `position` and the centre, so **the "no per-vertex
+attributes" property of §3.5 survives**. Octagon radius comes from the direction's angle:
+`r(θ) = R / cos(((θ + π/N) mod 2π/N) − π/N)` with N = 8.
+
+### 2b.3 Hold pulses
+
+When the logo is held and its skin begins to shed, the cage re-ignites as a **charge-only pulse** — cage
+lights, charge front sweeps, **no surface materialization** — repeating every **0.8 s** for as long as the
+button is held. The wake is deliberately off: the skin is being pulled apart at that moment, and
+materializing it would fight the separation.
+
+First pulse fires at `SEPARATE_START` of the hold charge (the moment panels begin to move), not at pointer-down.
+
+**Architectural consequence:** §4.5's `teardownIgnition()` currently **disposes** the cage geometry at `done`.
+That is now wrong — the cage must survive for the rest of the session so pulses can reuse it. It is hidden
+(`uGlobalFade = 0`) instead, and disposed only in `dispose()`.
+
 ## 3. Visual target
 
 Timing anchors to what exists: the video runs 7.67 s, the headline dissolves by 7 s, so the stage is clear
@@ -221,6 +276,25 @@ All range-clamped in CMS, following the separation global's pattern. Not localiz
 | `CORE_RADIUS` | `0.22` | As a fraction of logo height |
 | `DARK_MASS_OPACITY` | `0.12` | Inner-body surface opacity **during ignition only** (§3.3) |
 | `GLOW_DECAY` | `2.4` | Exponential decay rate for residual glow during settle; higher = faster falloff |
+
+### 4.6b Config — morph cage and pulses (§2b)
+
+| Field | Default | Meaning |
+|---|---|---|
+| `OVERLAY_ENABLED` | `true` | Off → ignition starts at the video cut, as originally built |
+| `OVERLAY_LEAD_MS` | `1000` | How long before the video ends the sphere appears |
+| `SPHERE_SCALE` | `1.15` | Sphere radius as a multiple of the logo's radius |
+| `BLOOM_SCALE` | `1.7` | Bloomed radius as a multiple of the **sphere's** radius (≈1.96× the logo) |
+| `POLY_SIDES` | `8` | Silhouette of the bloomed shape. 8 = octagon; 6 reproduces the reference |
+| `BLOOM_START` | `0.15` | Fraction of the overlay where the bloom begins |
+| `BLOOM_END` | `0.60` | Fraction where the bloom completes |
+| `MORPH_START` | `0.60` | Fraction where the octagon starts collapsing into the logo |
+| `PULSE_ENABLED` | `true` | Re-ignite while the logo is held |
+| `PULSE_MS` | `800` | Length of one charge-only pulse, and the interval between them |
+
+The morph is driven to completion by whichever comes first: `MORPH_START`→1.0 of the overlay clock, or the
+video actually ending. Snapping on the real video-end event keeps the cage honest if the overlay clock and
+the video drift apart — which they will, since the video's duration is not guaranteed frame-exact.
 
 ### 4.7 Dev bench
 

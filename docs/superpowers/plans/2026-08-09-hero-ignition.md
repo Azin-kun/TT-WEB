@@ -2039,6 +2039,103 @@ git commit -m "test(ignition): browser verification of the transition, draco sta
 
 ---
 
+---
+
+## Scope extension (owner, 2026-08-09) — Tasks 11–14
+
+Added after the owner saw Task 7's captured result. Spec §2b. Tasks 1–7 stand as built; these extend them.
+Task 8 (bench) is deferred until after Task 13 so its sliders cover the new fields in one pass.
+
+### Task 11: Morph targets in the cage shader
+
+**Files:** Modify `src/lib/three/ignition/types.ts`, `resolveIgnition.ts`, `resolveIgnition.check.ts`,
+`ignitionMaterial.ts`; `src/globals/HeroEffects.ts`; `src/seed/index.ts`.
+
+**Interfaces produced:** `IgnitionConfig` gains the §4.6b fields; `IgnitionUniforms` gains
+`uMorph`, `uBloom`, `uSphereR`, `uBloomR`, `uPolySides`, `uCentre`.
+
+- [ ] **Step 1: Extend the check first** — add the 10 new fields to `PERTURBED` in
+  `resolveIgnition.check.ts` and run it; it must FAIL with the fields missing from the config type.
+- [ ] **Step 2:** Add the fields to `types.ts` / `resolveIgnition.ts` / the Payload global / the seed.
+- [ ] **Step 3:** Run `npm run verify:config` — must pass, all fields round-tripping.
+- [ ] **Step 4: Shape targets in the cage vertex shader.** No new attributes — every target is derived
+  from `position` and `uCentre`:
+
+```glsl
+uniform vec3  uCentre;
+uniform float uSphereR;     // logoRadius * SPHERE_SCALE
+uniform float uBloomR;      // uSphereR * BLOOM_SCALE
+uniform float uPolySides;   // 8
+uniform float uBloom;       // 0 = sphere, 1 = bloomed polygon
+uniform float uMorph;       // 0 = shaped, 1 = true logo position
+uniform vec3  uSeed;
+varying float vDist;
+
+// Radius of a regular N-gon silhouette along a direction, inradius 1.
+float tt_polyR(vec2 d, float N) {
+  float a = atan(d.y, d.x);
+  float seg = 6.28318530718 / N;
+  float k = mod(a + seg * 0.5, seg) - seg * 0.5;
+  return 1.0 / max(0.2, cos(k));
+}
+
+void main() {
+  vec3 rel = position - uCentre;
+  float len = max(1e-5, length(rel));
+  vec3 dir = rel / len;
+  // sphere target, then the bloomed N-gon target (polygonal in XY, kept round in Z)
+  vec3 pSphere = uCentre + dir * uSphereR;
+  vec3 pPoly   = uCentre + dir * (uBloomR * tt_polyR(normalize(rel.xy + vec2(1e-6)), uPolySides));
+  vec3 shaped  = mix(pSphere, pPoly, uBloom);
+  vec3 finalPos = mix(shaped, position, uMorph);
+
+  vDist = distance(finalPos, uSeed);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(finalPos, 1.0);
+}
+```
+
+`vDist` is computed from the **morphed** position so the charge front tracks the cage wherever it currently
+is, not where the logo will end up.
+
+- [ ] **Step 5:** Typecheck, `npm run verify:config`, commit.
+
+### Task 12: Overlay phase in the controller
+
+**Files:** Modify `IgnitionController.ts`, `IgnitionController.check.ts`.
+
+- [ ] **Step 1: Write the failing assertions first.** `startOverlay()` drives `uBloom` 0→1 across
+  `BLOOM_START..BLOOM_END` and `uMorph` 0→1 from `MORPH_START`; `start()` called at the real video-end
+  **snaps `uMorph` to 1** regardless of overlay progress; `done` still fires exactly once; `startOverlay()`
+  is idempotent; `start()` without `startOverlay()` behaves exactly as it does today (uMorph 1, uBloom 0).
+- [ ] **Step 2:** Implement, run the check, commit.
+
+### Task 13: Wire the overlay to the video, and hold pulses
+
+**Files:** Modify `SketchIntro.tsx`, `LogoStage.tsx`, `LogoCanvas.tsx`, `LogoEngine.ts`,
+`IgnitionController.ts`.
+
+- [ ] **Step 1:** `SketchIntro` gains `onNearEnd`, fired once when
+  `currentTime >= duration - OVERLAY_LEAD_MS/1000`. Guard for `duration` being `NaN` while metadata is still
+  loading, and fall back to firing at `loadedmetadata + (duration - lead)` if `timeupdate` is throttled.
+- [ ] **Step 2:** Thread it: `LogoStage` calls `startOverlay()` on that signal and `startIgnition()` at
+  video end as now.
+- [ ] **Step 3: Stop disposing the cage at `done`** (spec §2b.3). `teardownIgnition()` hides it
+  (`uGlobalFade = 0`) and returns the dark mass; the geometry and material are freed only in `dispose()`.
+- [ ] **Step 4: Pulses.** `ShatterController` already knows when panels begin to move
+  (`charge >= SEPARATE_START`). Add `IgnitionController.pulse()` — a charge-only run of `PULSE_MS` with the
+  wake forced off (`uWakeActive = 0`) — and have `LogoEngine.tick()` fire it at `SEPARATE_START` and every
+  `PULSE_MS` thereafter while `holding` is true. Pulses must not emit `seed`/`cue`/`done`; those belong to
+  the one-shot bridge and `armed`/`onLive` hang off them.
+- [ ] **Step 5:** Verify with the puppeteer harness: capture the bridge, then capture a 3 s hold and confirm
+  repeated pulses with no surface materialization. Commit.
+
+### Task 14: Bench coverage for the new fields
+
+Fold into Task 8 — sliders for every §4.6b field, plus buttons to replay the overlay and to fire a single
+pulse in isolation.
+
+---
+
 ### Task 10 (CONDITIONAL): Kling video track
 
 **Do not start this task until the owner has seen Task 9's contact sheets and explicitly asks for it.** Per spec §5.3 the whole point of sequencing is that a satisfying live track costs **zero credits**. 128 credits available; per-job cost is not exposed by the API.
