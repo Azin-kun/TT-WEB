@@ -6,6 +6,19 @@ import { partitionForShatter } from './shatter/partition'
 import { makeShatterUniforms, patchForShatter } from './shatter/shatterMaterial'
 import { ShatterController } from './shatter/ShatterController'
 import { DEFAULT_SEPARATION, type SeparationConfig, type ShatterEvent, type ShatterUniforms } from './shatter/types'
+import { buildIgnitionCage } from './ignition/cage'
+import { IgnitionController } from './ignition/IgnitionController'
+import {
+  makeCageMaterial,
+  makeIgnitionUniforms,
+  patchSkinForIgnition,
+} from './ignition/ignitionMaterial'
+import {
+  DEFAULT_IGNITION,
+  type IgnitionConfig,
+  type IgnitionEvent,
+  type IgnitionUniforms,
+} from './ignition/types'
 
 const DEG = Math.PI / 180
 const IDLE_W = (Math.PI * 2) / 14 // one revolution ≈ 14 s, +Y = CCW from above (spec §7)
@@ -49,9 +62,21 @@ export class LogoEngine {
   private downX = 0
   private downY = 0
 
+  // electrical wireframe ignition
+  private ignition: IgnitionController | null = null
+  private ignitionUniforms: IgnitionUniforms | null = null
+  private cage: THREE.LineSegments | null = null
+  private cageMaterial: THREE.ShaderMaterial | null = null
+  private bodySurfaceMats: THREE.Material[] = []
+  private wantIgnition = false
+  /** true once the seed/cue/done sequence has completed by ANY path */
+  private ignitionResolved = false
+  private pendingIgnitionListeners = new Set<(e: IgnitionEvent) => void>()
+
   constructor(
     private canvas: HTMLCanvasElement,
     private config: SeparationConfig = DEFAULT_SEPARATION,
+    private ignitionConfig: IgnitionConfig = DEFAULT_IGNITION,
   ) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
@@ -125,6 +150,69 @@ export class LogoEngine {
       group.traverse((o) => {
         if ((o as THREE.Mesh).isMesh) o.renderOrder = 2
       })
+      // Ignition. Built HERE — before the inner body is parented — so the cage
+      // traverses only the skin. Doing it after `group.add(body)` would also
+      // wireframe the body's cloned geometry and double the segment count.
+      // Skipped if the sequence has already been forced through (load raced a
+      // reduced-motion or failure path) — building a controller now would
+      // replay seed/cue/done a second time.
+      if (this.ignitionConfig.ENABLED && !this.ignitionResolved) {
+        group.updateMatrixWorld(true)
+        const inv = new THREE.Matrix4().copy(group.matrixWorld).invert()
+        const localBox = new THREE.Box3()
+        group.traverse((o) => {
+          const mesh = o as THREE.Mesh
+          if (!mesh.isMesh || !mesh.geometry) return
+          mesh.geometry.computeBoundingBox()
+          const bb = mesh.geometry.boundingBox
+          if (!bb) return
+          localBox.union(
+            bb.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, mesh.matrixWorld)),
+          )
+        })
+        const centre = localBox.getCenter(new THREE.Vector3())
+        const logoHeight = heightFrac * visH
+
+        const iu = makeIgnitionUniforms(this.ignitionConfig, logoHeight, centre)
+        this.ignitionUniforms = iu
+
+        // AFTER patchForShatter, and composing rather than assigning — three
+        // exposes one onBeforeCompile per material, so the order matters and
+        // the composition is what keeps the hatch, wash and displacement alive.
+        Object.values(set).forEach((m) => patchSkinForIgnition(m, iu))
+
+        const density = isMobile
+          ? this.ignitionConfig.CAGE_DENSITY_MOBILE
+          : this.ignitionConfig.CAGE_DENSITY
+        this.cageMaterial = makeCageMaterial(iu)
+        this.cage = buildIgnitionCage(group, this.ignitionConfig, density, this.cageMaterial)
+        if (this.cage) group.add(this.cage)
+
+        // Reach: furthest bounding-box corner from the seed, so the front is
+        // guaranteed to clear the geometry by FRONT_END wherever the seed sits.
+        const seed = iu.uSeed.value
+        let reach = 0
+        for (let i = 0; i < 8; i++) {
+          const corner = new THREE.Vector3(
+            i & 1 ? localBox.max.x : localBox.min.x,
+            i & 2 ? localBox.max.y : localBox.min.y,
+            i & 4 ? localBox.max.z : localBox.min.z,
+          )
+          reach = Math.max(reach, corner.distanceTo(seed))
+        }
+        if (!(reach > 0)) reach = logoHeight
+
+        this.ignition = new IgnitionController(iu, reach, this.ignitionConfig)
+        this.pendingIgnitionListeners.forEach((cb) => this.ignition?.onIgnition(cb))
+        this.pendingIgnitionListeners.clear()
+        this.ignition.onIgnition((e) => {
+          if (e === 'done') this.teardownIgnition()
+        })
+        // A start() that arrived before load() resolved is honoured here rather
+        // than dropped — see startIgnition().
+        if (this.wantIgnition) this.ignition.start()
+      }
+
       // parented to the group, so it inherits the idle spin, tilt and shake
       group.add(body)
       this.shatterUniforms = u
@@ -160,6 +248,10 @@ export class LogoEngine {
       m.opacity = this.config.BODY_OPACITY
       m.depthWrite = false
       m.side = THREE.DoubleSide
+      // These are unpatched matcaps with otherwise identical parameters to the
+      // patched skin, so without a distinct key three can hand them the skin's
+      // compiled program — hatch, light wash, displacement and all.
+      m.customProgramCacheKey = () => 'tt-body-1'
     })
     const edgeMat = new THREE.LineBasicMaterial({
       color: 0x2b2a27,
@@ -168,6 +260,9 @@ export class LogoEngine {
       depthWrite: false,
     })
     this.bodyMaterials = [...Object.values(bodyMats), edgeMat]
+    // Kept separately: ignition animates ONLY the surfaces (the dark mass),
+    // never the drawn edges.
+    this.bodySurfaceMats = Object.values(bodyMats)
 
     const body = new THREE.Group()
     group.traverse((o) => {
@@ -175,10 +270,16 @@ export class LogoEngine {
       if (!src.isMesh) return
       const geo = src.geometry.clone()
 
-      // At BODY_OPACITY 0 the surfaces are fully invisible, so skip them
-      // entirely rather than paying to draw nothing — what's left is a pure
-      // wireframe of the mark.
-      if (this.config.BODY_OPACITY > 0) {
+      // At BODY_OPACITY 0 the surfaces are fully invisible, so they would
+      // normally be skipped rather than paying to draw nothing — what's left is
+      // a pure wireframe of the mark.
+      //
+      // Ignition needs them anyway: it raises them to DARK_MASS_OPACITY for the
+      // duration of the transition, because red on light paper reads as a red
+      // line, not as glow, unless it has something dark to burn against
+      // (spec §3.3). They are returned to BODY_OPACITY at `done`.
+      const needSurfaces = this.config.BODY_OPACITY > 0 || this.ignitionConfig.ENABLED
+      if (needSurfaces) {
         const surf = new THREE.Mesh(
           geo,
           bodyMats[src.name as keyof LogoMaterials] || bodyMats['logo-black'],
@@ -202,7 +303,7 @@ export class LogoEngine {
 
       // EdgesGeometry has copied what it needs, so the clone is dead weight
       // once nothing else references it.
-      if (this.config.BODY_OPACITY <= 0) geo.dispose()
+      if (!needSurfaces) geo.dispose()
     })
     return body
   }
@@ -224,6 +325,88 @@ export class LogoEngine {
   setShatterArmed(v: boolean) {
     this.wantArmed = v
     this.shatter?.setArmed(v)
+  }
+
+  /**
+   * Begin the electrical wireframe transition.
+   *
+   * Records the intent even if the mesh has not finished loading — `load()`
+   * starts the controller when it creates one. Without that, a slow load (cold
+   * cache, Draco wasm) finishing after the caller starts would leave the bridge
+   * dead and, because `armed` and `onLive` both hang off its `done` event, the
+   * hero permanently inert with no console error. This is the same shape as the
+   * setShatterArmed bug the 2026-08-09 review found.
+   */
+  startIgnition() {
+    this.wantIgnition = true
+    if (this.ignition) {
+      this.ignition.start()
+      return
+    }
+    // Turned off outright: consumers still need the full sequence.
+    if (!this.ignitionConfig.ENABLED) this.finishIgnitionNow()
+  }
+
+  /**
+   * Force the sequence to completion. The caller uses this when no controller
+   * will ever exist — reduced motion, or `load()` rejecting — so that `done`
+   * still fires and the hero does not sit inert behind a transition that never
+   * finishes.
+   */
+  finishIgnitionNow() {
+    if (this.ignition) {
+      this.ignition.finishNow()
+      return
+    }
+    if (this.ignitionResolved) return
+    this.ignitionResolved = true
+    const cbs = [...this.pendingIgnitionListeners]
+    this.pendingIgnitionListeners.clear()
+    for (const e of ['seed', 'cue', 'done'] as const) cbs.forEach((cb) => this.safeCall(cb, e))
+  }
+
+  /** Subscribe before or after load(); early subscriptions are replayed onto the controller. */
+  onIgnition(cb: (e: IgnitionEvent) => void): () => void {
+    if (this.ignition) return this.ignition.onIgnition(cb)
+    // Already completed via the immediate path — replay, so a late subscriber
+    // is not left waiting on an event that has been and gone.
+    if (this.ignitionResolved) {
+      for (const e of ['seed', 'cue', 'done'] as const) this.safeCall(cb, e)
+      return () => {}
+    }
+    this.pendingIgnitionListeners.add(cb)
+    return () => {
+      this.pendingIgnitionListeners.delete(cb)
+    }
+  }
+
+  private safeCall(cb: (e: IgnitionEvent) => void, e: IgnitionEvent) {
+    try {
+      cb(e)
+    } catch (err) {
+      console.error(`LogoEngine: ignition listener threw on "${e}"`, err)
+    }
+  }
+
+  /** Cage has served its purpose — free the line geometry and hand the skin back. */
+  private teardownIgnition() {
+    this.ignitionResolved = true
+    if (this.cage) {
+      this.cage.parent?.remove(this.cage)
+      this.cage.geometry.dispose()
+      this.cage = null
+    }
+    this.cageMaterial?.dispose()
+    this.cageMaterial = null
+    if (this.ignitionUniforms) {
+      this.ignitionUniforms.uWakeActive.value = 0
+      this.ignitionUniforms.uGlobalFade.value = 0
+    }
+    // Dark mass off; the ghost body returns to whatever the CMS asked for.
+    this.bodySurfaceMats.forEach((m) => {
+      m.opacity = this.config.BODY_OPACITY
+      m.visible = this.config.BODY_OPACITY > 0
+    })
   }
 
   /** Discrete shatter transitions. Nothing subscribes yet — see spec §7.4. */
@@ -337,6 +520,18 @@ export class LogoEngine {
     // the light wash sweeps continuously, blast or no blast
     if (this.shatterUniforms) this.shatterUniforms.uTime.value += dt
 
+    if (this.ignition && !this.ignition.isFinished()) {
+      this.ignition.update(dt)
+      // Dark mass rides the cage's own fade, so the red always has something to
+      // burn against for exactly as long as the cage is on screen (spec §3.3).
+      const fade = this.ignitionUniforms?.uGlobalFade.value ?? 0
+      const target = this.ignitionConfig.DARK_MASS_OPACITY * fade
+      this.bodySurfaceMats.forEach((m) => {
+        m.opacity = Math.max(this.config.BODY_OPACITY, target)
+        m.visible = m.opacity > 0
+      })
+    }
+
     if (this.shatter) {
       this.shatter.update(dt)
       if (this.group) {
@@ -369,6 +564,13 @@ export class LogoEngine {
     this.canvas.removeEventListener('keydown', this.onKey)
     this.shatter?.dispose()
     this.shatter = null
+    this.ignition?.dispose()
+    this.ignition = null
+    this.pendingIgnitionListeners.clear()
+    this.cageMaterial?.dispose()
+    this.cageMaterial = null
+    this.cage?.geometry.dispose()
+    this.cage = null
     this.scene.traverse((o) => {
       const m = o as THREE.Mesh
       if (m.isMesh) m.geometry?.dispose()
@@ -376,6 +578,8 @@ export class LogoEngine {
     if (this.materials) Object.values(this.materials).forEach((m) => m.dispose())
     this.bodyMaterials.forEach((m) => m.dispose())
     this.bodyMaterials = []
+    // Same instances as bodyMaterials — disposed above, just drop the refs.
+    this.bodySurfaceMats = []
     this.renderer.dispose()
   }
 }
