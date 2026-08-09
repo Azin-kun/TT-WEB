@@ -126,15 +126,23 @@ vec3 tt_shaped(vec3 pos, float seed) {
   // settle and every pulse run entirely at uMorph = 1.
   if (uMorph < 0.999) {
     vec3 rel = pos - uCentre;
-    vec3 dir = rel / max(1e-5, length(rel));
+    float len = length(rel);
+    vec3 dir = rel / max(1e-5, len);
 
     vec2 dxy = rel.xy;
     // A vertex sitting exactly on the centre axis has no angle to speak of;
     // pick one rather than feeding atan() a zero vector.
     if (dot(dxy, dxy) < 1e-10) dxy = vec2(1.0, 0.0);
 
-    vec3 pSphere = uCentre + dir * uSphereR;
-    vec3 pPoly   = uCentre + dir * (uBloomR * tt_polyR(normalize(dxy), uPolySides));
+    // Ease the projection in by radius. A vertex near the centre has an
+    // ill-conditioned direction — two adjacent ones can point opposite ways —
+    // and projecting both onto the sphere flings them to opposite poles,
+    // stretching their shared segment into a chord slashing across the whole
+    // cage. Near-centre vertices therefore keep close to their own radius.
+    float w = smoothstep(0.0, uSphereR * 0.35, len);
+
+    vec3 pSphere = uCentre + dir * mix(len, uSphereR, w);
+    vec3 pPoly   = uCentre + dir * mix(len, uBloomR * tt_polyR(normalize(dxy), uPolySides), w);
     p = mix(mix(pSphere, pPoly, uBloom), pos, uMorph);
   }
 

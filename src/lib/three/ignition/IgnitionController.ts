@@ -34,6 +34,10 @@ export class IgnitionController {
   private overlayStarted = false
   private overlayT = 0
 
+  // hold pulses — charge-only re-ignitions while the skin sheds (spec §2b.3)
+  private pulsing = false
+  private pulseT = 0
+
   /**
    * @param reach max distance from the seed to any point of the logo, so the
    *   front is guaranteed to clear the geometry by FRONT_END.
@@ -71,7 +75,10 @@ export class IgnitionController {
     this.overlayStarted = true
     this.overlayT = 0
     this.u.uGlobalFade.value = 1
-    this.u.uWakeActive.value = 0
+    // The wake must be ACTIVE with the front at zero, which hides the skin
+    // entirely. Leaving it inactive means tt_ignWake() returns 1 and the solid
+    // logo paints itself over the still-playing video.
+    this.u.uWakeActive.value = 1
     this.u.uCoreLive.value = 0
     this.u.uFront.value = 0
     this.u.uBloom.value = 0
@@ -119,8 +126,61 @@ export class IgnitionController {
     this.emit('done')
   }
 
+  isPulsing(): boolean {
+    return this.pulsing
+  }
+
+  /** true while the cage is over the video and the bridge proper has not begun */
+  isOverlayActive(): boolean {
+    return this.overlayStarted && !this.started && !this.finished
+  }
+
+  /**
+   * Charge-only re-ignition, fired while the logo is held and its skin is
+   * shedding. Emits NOTHING: seed/cue/done belong to the one-shot bridge, and
+   * re-emitting them would re-arm the separation and re-trigger the words on
+   * every pulse.
+   *
+   * The wake is forced off for the whole pulse. The skin is being pulled apart
+   * at that moment, so materializing it would fight the separation.
+   */
+  pulse() {
+    // Pulses belong to the life AFTER the bridge. One arriving mid-bridge would
+    // fight the charge front that is already running.
+    if (!this.finished) return
+    this.pulsing = true
+    this.pulseT = 0
+    this.u.uGlobalFade.value = 1
+    this.u.uWakeActive.value = 0
+    this.u.uCoreLive.value = 1
+    this.u.uSparkLevel.value = 1
+    this.u.uMorph.value = 1
+    this.u.uBloom.value = 0
+    this.u.uFront.value = 0
+  }
+
+  private updatePulse(dt: number) {
+    this.pulseT += dt * 1000
+    const q = clamp01(this.pulseT / Math.max(1, this.config.PULSE_MS))
+    this.u.uFront.value = q * this.reach * 1.15
+    this.u.uCoreLive.value = Math.exp(-this.config.GLOW_DECAY * q)
+    const fade = 1 - smoothstep(0.55, 1, q)
+    this.u.uGlobalFade.value = fade
+    this.u.uSparkLevel.value = fade
+    if (q >= 1) {
+      this.pulsing = false
+      this.u.uGlobalFade.value = 0
+      this.u.uSparkLevel.value = 0
+      this.u.uCoreLive.value = 0
+      this.u.uFront.value = 0
+    }
+  }
+
   update(dt: number) {
-    if (this.finished) return
+    if (this.finished) {
+      if (this.pulsing) this.updatePulse(dt)
+      return
+    }
 
     // Overlay runs on its own clock until the video actually ends and start()
     // takes over.

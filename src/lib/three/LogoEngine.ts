@@ -70,8 +70,12 @@ export class LogoEngine {
   private cageMaterial: THREE.ShaderMaterial | null = null
   private embers: THREE.Points | null = null
   private emberMaterial: THREE.ShaderMaterial | null = null
+  private bodyGroup: THREE.Group | null = null
   private bodySurfaceMats: THREE.Material[] = []
   private wantIgnition = false
+  private wantOverlay = false
+  /** counts down to the next hold pulse while the skin is shedding */
+  private pulseTimer = 0
   /** true once the seed/cue/done sequence has completed by ANY path */
   private ignitionResolved = false
   private pendingIgnitionListeners = new Set<(e: IgnitionEvent) => void>()
@@ -228,13 +232,16 @@ export class LogoEngine {
         this.ignition.onIgnition((e) => {
           if (e === 'done') this.teardownIgnition()
         })
-        // A start() that arrived before load() resolved is honoured here rather
-        // than dropped — see startIgnition().
+        // Calls that arrived before load() resolved are honoured here rather
+        // than dropped — see startIgnition(). Overlay first, so a load that
+        // finished between the two signals still plays them in order.
+        if (this.wantOverlay) this.ignition.startOverlay()
         if (this.wantIgnition) this.ignition.start()
       }
 
       // parented to the group, so it inherits the idle spin, tilt and shake
       group.add(body)
+      this.bodyGroup = body
       this.shatterUniforms = u
 
       // No controller when disabled (separationEnabled: false) or under reduced
@@ -357,6 +364,16 @@ export class LogoEngine {
    * hero permanently inert with no console error. This is the same shape as the
    * setShatterArmed bug the 2026-08-09 review found.
    */
+  /**
+   * Bring the cage up as a sphere over the still-playing sketch video.
+   * Records the intent if the mesh has not loaded yet, exactly as
+   * startIgnition() does.
+   */
+  startOverlay() {
+    this.wantOverlay = true
+    this.ignition?.startOverlay()
+  }
+
   startIgnition() {
     this.wantIgnition = true
     this.resetPose()
@@ -427,23 +444,16 @@ export class LogoEngine {
     }
   }
 
-  /** Cage has served its purpose — free the line geometry and hand the skin back. */
+  /**
+   * Bridge is over — hand the skin back and put the cage away.
+   *
+   * The cage is HIDDEN, not disposed. Hold pulses reuse it for the rest of the
+   * session, so freeing it here would mean rebuilding ~59k segments on the first
+   * press. It costs nothing while hidden: tick() drops `visible` to false, so it
+   * is not drawn at all. The geometry is released in dispose().
+   */
   private teardownIgnition() {
     this.ignitionResolved = true
-    if (this.cage) {
-      this.cage.parent?.remove(this.cage)
-      this.cage.geometry.dispose()
-      this.cage = null
-    }
-    this.cageMaterial?.dispose()
-    this.cageMaterial = null
-    if (this.embers) {
-      this.embers.parent?.remove(this.embers)
-      this.embers.geometry.dispose()
-      this.embers = null
-    }
-    this.emberMaterial?.dispose()
-    this.emberMaterial = null
     if (this.ignitionUniforms) {
       this.ignitionUniforms.uWakeActive.value = 0
       this.ignitionUniforms.uGlobalFade.value = 0
@@ -570,6 +580,26 @@ export class LogoEngine {
     // through the overlay, the charge and every pulse.
     if (this.ignitionUniforms) this.ignitionUniforms.uTime.value += dt
 
+    // Hold pulses: the first fires the moment the skin starts shedding, then
+    // every PULSE_MS for as long as the press is held (spec §2b.3).
+    if (this.ignition?.isFinished() && this.shatter && this.ignitionConfig.PULSE_ENABLED) {
+      const st = this.shatter.getState()
+      const held = st === 'charging' || st === 'blasted'
+      const shedding = held && this.shatter.getCharge() >= this.config.SEPARATE_START
+      if (shedding) {
+        this.pulseTimer -= dt * 1000
+        if (this.pulseTimer <= 0) {
+          this.ignition.pulse()
+          this.pulseTimer = this.ignitionConfig.PULSE_MS
+        }
+      } else {
+        // Reset while not shedding, so the next hold fires immediately rather
+        // than waiting out a timer left over from the previous one.
+        this.pulseTimer = 0
+      }
+      this.ignition.update(dt)
+    }
+
     if (this.ignition && !this.ignition.isFinished()) {
       this.ignition.update(dt)
       // Dark mass rides the cage's own fade, so the red always has something to
@@ -590,6 +620,17 @@ export class LogoEngine {
         this.group.position.y = this.baseY + v.y
       }
     }
+
+    // The cage outlives the bridge so pulses can reuse it, but it must not cost
+    // a draw call for the rest of the session while it is invisible.
+    const cageLive = (this.ignitionUniforms?.uGlobalFade.value ?? 0) > 0.001
+    if (this.cage) this.cage.visible = cageLive
+    if (this.embers) this.embers.visible = cageLive
+
+    // While the cage floats over the still-playing video, the logo's own ghost
+    // wireframe must stay out of it — otherwise it draws on top of the video's
+    // drawing of the same mark, in the same place, and reads as a doubling.
+    if (this.bodyGroup) this.bodyGroup.visible = !this.ignition?.isOverlayActive()
 
     this.renderer.render(this.scene, this.camera)
     this.raf = requestAnimationFrame(this.tick)

@@ -224,7 +224,11 @@ const advance = (c: IgnitionController, ms: number) => {
   c.startOverlay()
   check('overlay starts as a sphere', u.uBloom.value === 0 && u.uMorph.value === 0)
   check('cage is visible during the overlay', u.uGlobalFade.value === 1)
-  check('no surface materialization during the overlay', u.uWakeActive.value === 0)
+  check('overlay reports itself active', c.isOverlayActive())
+  // The skin must be HIDDEN, which needs the wake ACTIVE with the front at zero.
+  // uWakeActive of 0 would make tt_ignWake() return 1 and paint the finished
+  // logo over the video.
+  check('skin is hidden during the overlay', u.uWakeActive.value === 1 && u.uFront.value === 0)
 
   advance(c, 100) // q ~= 0.10, before BLOOM_START 0.15
   check('no bloom before BLOOM_START', u.uBloom.value === 0)
@@ -294,6 +298,72 @@ const advance = (c: IgnitionController, ms: number) => {
   const { c, u } = make()
   c.finishNow()
   check('finishNow leaves the cage morphed home', u.uMorph.value === 1)
+}
+
+// --- hold pulses (spec §2b.3) ---
+
+/** run the bridge to completion so pulses become legal */
+const finished = () => {
+  const m = make()
+  m.c.start()
+  advance(m.c, DEFAULT_IGNITION.IGNITION_MS + 200)
+  m.events.length = 0
+  return m
+}
+
+// A pulse arriving mid-bridge would fight the charge front already running.
+{
+  const { c, u } = make()
+  c.start()
+  advance(c, 300)
+  const before = u.uGlobalFade.value
+  c.pulse()
+  check('pulse mid-bridge is ignored', !c.isPulsing() && u.uGlobalFade.value === before)
+}
+
+{
+  const { c, u, events } = finished()
+  check('cage hidden after the bridge', u.uGlobalFade.value === 0)
+  c.pulse()
+  check('pulse brings the cage back', u.uGlobalFade.value === 1)
+  check('pulse reports pulsing', c.isPulsing())
+  check('pulse keeps the cage at the logo shape', u.uMorph.value === 1 && u.uBloom.value === 0)
+  check('pulse emits nothing', events.length === 0)
+
+  // The wake must stay off for the WHOLE pulse — the skin is being pulled apart
+  // and materializing it would fight the separation.
+  let wakeEverOn = false
+  for (let t = 0; t < DEFAULT_IGNITION.PULSE_MS + 100; t += 16) {
+    c.update(0.016)
+    if (u.uWakeActive.value !== 0) wakeEverOn = true
+  }
+  check('wake never activates during a pulse', !wakeEverOn)
+  check('pulse finishes and hides the cage', !c.isPulsing() && u.uGlobalFade.value === 0)
+  check('pulse still emits nothing', events.length === 0)
+}
+
+// The front sweeps outward during a pulse and resets for the next one.
+{
+  const { c, u } = finished()
+  c.pulse()
+  advance(c, DEFAULT_IGNITION.PULSE_MS * 0.5)
+  const mid = u.uFront.value
+  check('pulse front travels', mid > 0)
+  advance(c, DEFAULT_IGNITION.PULSE_MS)
+  check('pulse front resets when done', u.uFront.value === 0)
+  c.pulse()
+  check('a second pulse restarts the front', u.uFront.value === 0 && c.isPulsing())
+  advance(c, DEFAULT_IGNITION.PULSE_MS * 0.5)
+  check('second pulse sweeps again', u.uFront.value > 0)
+}
+
+// Pulses must never resurrect the bridge's own state.
+{
+  const { c, events } = finished()
+  c.pulse()
+  advance(c, DEFAULT_IGNITION.PULSE_MS + 100)
+  check('pulses never re-emit done', events.filter((e) => e === 'done').length === 0)
+  check('controller stays finished', c.isFinished())
 }
 
 console.log(

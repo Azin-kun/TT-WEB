@@ -42,7 +42,9 @@ export function LogoStage({
   const [introDone, setIntroDone] = useState(false)
   const [canvasReady, setCanvasReady] = useState(false)
   const [ignited, setIgnited] = useState(false)
+  const [overlay, setOverlay] = useState(false)
   const live = introDone && canvasReady
+  const onNearEnd = useCallback(() => setOverlay(true), [])
 
   // The words enter at the ignition's cue rather than when the canvas appears:
   // the cue lands just as the charge front finishes, so the energy disperses
@@ -65,8 +67,13 @@ export function LogoStage({
         style={{
           position: 'absolute',
           inset: 0,
-          opacity: live ? 1 : introDone ? 0.001 : 0,
-          transition: 'opacity 0.6s ease',
+          // Once the overlay starts the canvas sits ABOVE the video and stays
+          // there. It has to, or the cage would be hidden behind an opaque
+          // video — and dropping back down at the cut would bury the charge
+          // behind the video's own half-second fade-out.
+          zIndex: overlay ? 3 : 0,
+          opacity: live || overlay ? 1 : introDone ? 0.001 : 0,
+          transition: 'opacity 0.4s ease',
         }}
       >
         <LogoCanvas
@@ -74,12 +81,18 @@ export function LogoStage({
           config={separation}
           ignition={ignition}
           armed={ignited}
+          overlay={overlay}
           ignite={live}
           onIgnitionCue={onCue}
           onIgnitionDone={onDone}
         />
       </div>
-      <SketchIntro onDone={() => setIntroDone(true)} onPlayStart={onIntroPlayStart} />
+      <SketchIntro
+        onDone={() => setIntroDone(true)}
+        onPlayStart={onIntroPlayStart}
+        onNearEnd={onNearEnd}
+        nearEndLeadMs={ignition.OVERLAY_ENABLED ? ignition.OVERLAY_LEAD_MS : 0}
+      />
     </div>
   )
 }

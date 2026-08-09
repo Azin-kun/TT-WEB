@@ -12,6 +12,7 @@ export default function LogoCanvas({
   config = DEFAULT_SEPARATION,
   ignition = DEFAULT_IGNITION,
   armed = false,
+  overlay = false,
   ignite = false,
   onIgnitionCue,
   onIgnitionDone,
@@ -20,6 +21,7 @@ export default function LogoCanvas({
   config?: SeparationConfig
   ignition?: IgnitionConfig
   armed?: boolean
+  overlay?: boolean
   ignite?: boolean
   onIgnitionCue?: () => void
   onIgnitionDone?: () => void
@@ -78,6 +80,11 @@ export default function LogoCanvas({
 
   // Starts once the 3D mesh has taken over from the sketch-draw video. Safe to
   // call before load() resolves — the engine records the intent.
+  // Brings the cage up as a sphere over the tail of the sketch video.
+  useEffect(() => {
+    if (overlay) engineRef.current?.startOverlay()
+  }, [overlay])
+
   useEffect(() => {
     if (ignite) engineRef.current?.startIgnition()
   }, [ignite])
