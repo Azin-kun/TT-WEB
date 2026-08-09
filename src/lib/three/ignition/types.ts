@@ -62,8 +62,15 @@ export const DEFAULT_IGNITION: Readonly<IgnitionConfig> = Object.freeze({
   WAKE_LAG: 0.1,
   /**
    * Fraction of wireframe segments kept. A PARTIAL wireframe reads as scribble
-   * where a complete one reads as CAD — this is a look control as much as a
-   * budget control.
+   * where a complete one reads as CAD.
+   *
+   * This is a LOOK control, not a budget control. THREE.WireframeGeometry
+   * deduplicates shared edges, so the whole logo is only 29,557 segments
+   * (19,704 tris, closed manifold => ~3T/2) — measured, not estimated. Even at
+   * density 1 that is one cheap draw call, so density buys appearance only.
+   *
+   * 0.55 (~16.3k segments) is a provisional starting point. The right value is
+   * a visual call to be settled on the bench at /[locale]/dev/ignition.
    */
   CAGE_DENSITY: 0.55,
   /** same, below 640px */

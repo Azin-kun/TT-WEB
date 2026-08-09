@@ -925,7 +925,11 @@ console.log('tris:', tris, 'wireframe segments:', tris * 3, 'at 0.55:', Math.rou
 cd "D:/TAMPA TARUNO/WEBSITE/_WEB_PRODUCT" && node scripts/cage-budget.mjs && rm scripts/cage-budget.mjs
 ```
 
-Expected: ~19,704 tris / ~59,112 segments / ~32,512 at density 0.55. **If the count differs by more than ~10%**, note the real number in the commit message and adjust `CAGE_DENSITY` in `types.ts` so the shipped budget stays near 30k.
+**Result (measured 2026-08-09):** shipped Draco mesh = **19,696 tris**, vs 19,704 in the uncompressed source — 0.04 % apart, same mesh.
+
+**But the segment figure in this plan was wrong.** `THREE.WireframeGeometry` **deduplicates shared edges**; it does not emit 3 per triangle. Verified on a synthetic quad (5 segments, not 6) and a unit box (18, not 36), then measured on the real logo: **29,557 unique segments**, not 59,112.
+
+Consequence: `CAGE_DENSITY` is a **look control, not a budget control** — even density 1 is one draw call of ~29.6 k segments. The 0.55 default's original justification no longer holds; it stays as a provisional starting point to be settled visually on the bench in Task 8. Do not "fix" it by arithmetic.
 
 - [ ] **Step 6: Wire the check in and commit**
 

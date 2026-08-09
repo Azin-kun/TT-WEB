@@ -83,21 +83,31 @@ exist. This is a change to existing code, not an addition beside it.
 ### 3.4 The cage geometry — refined from the verbal design
 
 The logo is **19,704 triangles / 32,354 verts** across 2 meshes — measured from the accessors of the
-uncompressed source `_ASSETS/logo-3d/logo.glb`. The shipped file is `logo.draco.glb`, which should decode to
-the same topology; **verify the decoded count during implementation** before trusting the segment budget
-below.
+uncompressed source `_ASSETS/logo-3d/logo.glb`. **Verified during implementation:** the shipped
+`public/models/logo.draco.glb` reports **19,696 triangles**, 0.04 % apart, so the two are the same mesh and
+the budget below is sound.
 
 `EdgesGeometry` with a low angle threshold was the obvious choice, but it is **wrong here**: it includes an
 edge only when adjacent face normals differ by more than the threshold, so the extruded logo's **flat front
 and back caps would be nearly empty of lines** and only the curved side band would be dense. The result is
 an outline with a dense rim, not a cage.
 
-**Use `WireframeGeometry`** (every triangle edge, no angle test) = 59,112 segments, then **subsample to
-`CAGE_DENSITY`** with the existing `mulberry32` deterministic PRNG from `shatter/types.ts`.
+**Use `WireframeGeometry`** (every triangle edge, no angle test), then **subsample to `CAGE_DENSITY`** with
+the existing `mulberry32` deterministic PRNG from `shatter/types.ts`.
 
-Subsampling earns its place three times over: it is the mobile density knob, it keeps the segment count near
-the ~30 k originally budgeted (0.55 × 59,112 ≈ 32.5 k), and **a partial wireframe reads as scribble where a
-complete one reads as CAD** — which is the point.
+**Corrected 2026-08-09 during implementation.** This section originally claimed `WireframeGeometry` yields
+59,112 segments (3 per triangle, undeduplicated). It does **not** — `WireframeGeometry` deduplicates shared
+edges. Verified on a synthetic quad (5 segments, not 6) and a unit box (18, not 36), then measured on the
+real logo: **29,557 unique segments** across the two primitives. The logo is effectively a closed manifold,
+so the count is ~3T/2, and it coincidentally equals what deduplicated `EdgesGeometry` would have produced.
+
+The consequence is that **`CAGE_DENSITY` is a look control, not a budget control.** Even at density 1 the
+whole cage is one draw call of ~29.6 k segments, which is affordable. The default of 0.55 (~16.3 k) is a
+provisional starting point whose original justification — "keeps the count near the ~30 k budgeted" — was
+derived from the doubled figure and no longer holds. **The value is a visual call to settle on the bench.**
+
+Subsampling still earns its place twice: it is the mobile density knob, and **a partial wireframe reads as
+scribble where a complete one reads as CAD** — which is the point.
 
 ### 3.5 Cost
 
