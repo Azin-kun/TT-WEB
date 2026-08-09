@@ -216,7 +216,7 @@ export const HeroEffects: GlobalConfig = {
         {
           name: 'cueFrac',
           type: 'number',
-          defaultValue: 0.8,
+          defaultValue: 0.73,
           min: 0.1,
           max: 1,
           admin: { description: 'Fraction where the floating words / orbs are told to enter' },
@@ -261,7 +261,7 @@ export const HeroEffects: GlobalConfig = {
         {
           name: 'cageDensity',
           type: 'number',
-          defaultValue: 0.55,
+          defaultValue: 0.3,
           min: 0.05,
           max: 1,
           admin: {
@@ -277,7 +277,7 @@ export const HeroEffects: GlobalConfig = {
           max: 1,
           admin: { description: 'Same, on screens below 640px' },
         },
-        { name: 'cageOpacity', type: 'number', defaultValue: 0.9, min: 0, max: 1 },
+        { name: 'cageOpacity', type: 'number', defaultValue: 0.26, min: 0, max: 1 },
         {
           name: 'cageSeed',
           type: 'number',
@@ -363,7 +363,7 @@ export const HeroEffects: GlobalConfig = {
         {
           name: 'bloomScale',
           type: 'number',
-          defaultValue: 1.1,
+          defaultValue: 1,
           min: 1,
           max: 4,
           admin: {
@@ -417,25 +417,25 @@ export const HeroEffects: GlobalConfig = {
         {
           name: 'wireJitter',
           type: 'number',
-          defaultValue: 0.03,
+          defaultValue: 0.07,
           min: 0,
           max: 0.3,
           admin: { description: 'How far the wires drift, as a fraction of the logo radius' },
         },
-        { name: 'wireSpeed', type: 'number', defaultValue: 0.9, min: 0, max: 6 },
+        { name: 'wireSpeed', type: 'number', defaultValue: 6, min: 0, max: 6 },
         {
           name: 'sparkStagger',
           type: 'number',
-          defaultValue: 0.06,
+          defaultValue: 0.215,
           min: 0,
           max: 0.5,
           admin: { description: 'Randomness in the charge front. 0 gives a clean, even ring.' },
         },
-        { name: 'sparkRate', type: 'number', defaultValue: 1.6, min: 0, max: 10 },
+        { name: 'sparkRate', type: 'number', defaultValue: 2.3, min: 0, max: 10 },
         {
           name: 'sparkDensity',
           type: 'number',
-          defaultValue: 0.08,
+          defaultValue: 0.19,
           min: 0,
           max: 0.9,
           admin: { description: 'How many wires are lit at once. High values wash out.' },
@@ -460,12 +460,12 @@ export const HeroEffects: GlobalConfig = {
         {
           name: 'emberDensity',
           type: 'number',
-          defaultValue: 0.22,
+          defaultValue: 0.39,
           min: 0,
           max: 1,
           admin: { description: 'Fraction of cage junctions that carry an ember' },
         },
-        { name: 'emberSize', type: 'number', defaultValue: 3.5, min: 0.5, max: 20 },
+        { name: 'emberSize', type: 'number', defaultValue: 5, min: 0.5, max: 20 },
         { name: 'emberTwinkle', type: 'number', defaultValue: 2.5, min: 0, max: 12 },
         { name: 'emberOpacity', type: 'number', defaultValue: 0.95, min: 0, max: 1 },
       ],

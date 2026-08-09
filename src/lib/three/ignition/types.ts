@@ -76,7 +76,7 @@ export const DEFAULT_IGNITION: Readonly<IgnitionConfig> = Object.freeze({
    * ConstellationField's entrance (onLive) moves here too — it lands just as
    * the front finishes, so the energy disperses INTO the orbiting bodies.
    */
-  CUE_FRAC: 0.8,
+  CUE_FRAC: 0.73,
   /** seed position offset from the logo's centre, as fractions of logo height */
   SEED_OFFSET_X: 0,
   SEED_OFFSET_Y: 0,
@@ -94,13 +94,15 @@ export const DEFAULT_IGNITION: Readonly<IgnitionConfig> = Object.freeze({
    * (19,704 tris, closed manifold => ~3T/2) — measured, not estimated. Even at
    * density 1 that is one cheap draw call, so density buys appearance only.
    *
-   * 0.55 (~16.3k segments) is a provisional starting point. The right value is
-   * a visual call to be settled on the bench at /[locale]/dev/ignition.
+   * Owner-tuned 2026-08-09 on the bench: 0.3 (~8.9k segments), down from the
+   * provisional 0.55 — pulling toward the reference's delicate web rather than
+   * the heavy black mass the higher value produced.
    */
-  CAGE_DENSITY: 0.55,
+  CAGE_DENSITY: 0.3,
   /** same, below 640px */
   CAGE_DENSITY_MOBILE: 0.3,
-  CAGE_OPACITY: 0.9,
+  /** owner-tuned: 0.26, well down from 0.9 — the cage reads as a whisper, not ink */
+  CAGE_OPACITY: 0.26,
   /** mulberry32 seed, so the subsample is identical on every load */
   CAGE_SEED: 1337,
   /** cold cage — identical to the ghost wireframe ink and to the video's pencil */
@@ -143,7 +145,7 @@ export const DEFAULT_IGNITION: Readonly<IgnitionConfig> = Object.freeze({
    * scales now share one reference, so the total is the number you set instead
    * of the product of two sliders.
    */
-  BLOOM_SCALE: 1.1,
+  BLOOM_SCALE: 1,
   /** silhouette of the bloomed shape. 8 = octagon; 6 reproduces the reference. */
   POLY_SIDES: 8,
   BLOOM_START: 0.15,
@@ -165,18 +167,23 @@ export const DEFAULT_IGNITION: Readonly<IgnitionConfig> = Object.freeze({
    * Amplitude as a fraction of the logo's radius. The reference writhes subtly —
    * a slow breath, not a jitter.
    */
-  WIRE_JITTER: 0.03,
-  WIRE_SPEED: 0.9,
+  WIRE_JITTER: 0.07,
+  /**
+   * Owner-tuned to 6, which is the CMS/bench maximum. Worth widening the range
+   * if it ever wants to go faster — a value sitting exactly on its cap usually
+   * means the cap is the constraint, not the preference.
+   */
+  WIRE_SPEED: 6,
   /**
    * Random per-segment offset applied to the charge front, as a fraction of the
    * logo's radius. Without it the front is a clean expanding ring; with it the
    * edge is broken and ragged, which is what the reference actually shows.
    */
-  SPARK_STAGGER: 0.06,
+  SPARK_STAGGER: 0.215,
   /** how often a given segment flares, cycles per second */
-  SPARK_RATE: 1.6,
+  SPARK_RATE: 2.3,
   /** fraction of each cycle a segment spends flaring — effectively how many are lit at once */
-  SPARK_DENSITY: 0.08,
+  SPARK_DENSITY: 0.19,
   /** spark level while the cage is cold (sphere/bloom), so it is alive before it ignites */
   SPARK_IDLE: 0.25,
 
@@ -188,9 +195,9 @@ export const DEFAULT_IGNITION: Readonly<IgnitionConfig> = Object.freeze({
    */
   EMBER_ENABLED: true,
   /** fraction of cage vertices that become embers */
-  EMBER_DENSITY: 0.22,
+  EMBER_DENSITY: 0.39,
   /** base point size in px, before perspective attenuation */
-  EMBER_SIZE: 3.5,
+  EMBER_SIZE: 5,
   EMBER_TWINKLE: 2.5,
   EMBER_OPACITY: 0.95,
 })
