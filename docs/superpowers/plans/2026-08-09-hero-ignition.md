@@ -2113,4 +2113,14 @@ Trim to ~2 s, concatenate onto the master, re-encode all three shipped files, th
 
 **Type consistency:** `IgnitionConfig` field names are identical across `types.ts`, `resolveIgnition.ts`, the Payload groups, the seed and the check scripts. `IgnitionUniforms` keys used in `ignitionMaterial.ts` and `IgnitionController.ts` match their `types.ts` declaration. `buildIgnitionCage(source, config, density, material)` is called with exactly that signature in Task 6. `IgnitionEvent` is `'seed' | 'cue' | 'done'` everywhere.
 
-**Known risk carried into execution:** Task 4 anchors the skin patch on `#include <alphatest_fragment>`. If `MeshMatcapMaterial`'s fragment shader in this three.js version does not contain that chunk, `replaceOrThrow` **throws loudly at first compile** rather than silently no-opping — deliberate. Should it throw, substitute `#include <alphamap_fragment>` or `#include <color_fragment>`, both of which run after `diffuseColor` is declared.
+**Known risk carried into execution — RESOLVED 2026-08-09.** Task 4 anchors the skin patch on
+`#include <alphatest_fragment>`. Verified against three r185's `matcap` shader before writing the patch: the
+vertex stage has `<common>` and `<begin_vertex>`; the fragment stage has `<common>` and
+`<alphatest_fragment>`, with `vec4 diffuseColor` declared before it. The documented fallbacks were not
+needed.
+
+Task 4 also gained a check script the plan did not originally call for
+(`ignitionMaterial.check.ts`), because the onBeforeCompile clobber is the branch's biggest hazard and
+`onBeforeCompile` is a pure string transform — so it can be driven against three's real shader source with
+no WebGL context. It asserts that shatter's hatch, wash, displacement and uniforms all survive composition,
+**and** carries a negative control proving those assertions fail when the patch assigns instead of composing.
