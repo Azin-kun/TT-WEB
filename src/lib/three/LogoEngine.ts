@@ -421,6 +421,14 @@ export class LogoEngine {
     for (const e of ['seed', 'cue', 'done'] as const) cbs.forEach((cb) => this.safeCall(cb, e))
   }
 
+  /**
+   * Fire one charge-only pulse. Normally driven automatically from the hold in
+   * tick(); exposed so the dev bench can tune PULSE_MS in isolation.
+   */
+  pulseIgnition() {
+    this.ignition?.pulse()
+  }
+
   /** Subscribe before or after load(); early subscriptions are replayed onto the controller. */
   onIgnition(cb: (e: IgnitionEvent) => void): () => void {
     if (this.ignition) return this.ignition.onIgnition(cb)
