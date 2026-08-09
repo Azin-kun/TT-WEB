@@ -8,11 +8,18 @@ const hexColour = (value: unknown) =>
     : 'Use a 6-digit hex colour, e.g. #B4571C'
 
 /**
- * Physics and material settings for the hero logo separation.
- * NOT localized — identical in EN and ID (mostly numbers; shineWarm and
- * shineBright are hex colour strings).
- * Ranges mirror the dev bench sliders at /[locale]/dev/shatter and are enforced
- * by Payload on the REST API as well as in the admin UI.
+ * Physics and material settings for the hero logo: the hold-to-separate
+ * interaction, and the electrical wireframe ignition that bridges the sketch
+ * video and the rotating 3D logo.
+ * NOT localized — identical in EN and ID (mostly numbers; the colour fields are
+ * hex strings).
+ * Ranges mirror the dev bench sliders at /[locale]/dev/shatter and
+ * /[locale]/dev/ignition, and are enforced by Payload on the REST API as well
+ * as in the admin UI.
+ *
+ * Ignition fields may be null on an existing install that has not been
+ * reseeded — resolveIgnition() falls back to DEFAULT_IGNITION for every one of
+ * them, so the effect runs correctly before anyone opens /admin.
  */
 export const HeroEffects: GlobalConfig = {
   slug: 'hero-effects',
@@ -162,6 +169,161 @@ export const HeroEffects: GlobalConfig = {
           max: 20,
           admin: { description: 'Pointer travel that turns a hold into a drag' },
         },
+      ],
+    },
+    {
+      name: 'ignitionEnabled',
+      type: 'checkbox',
+      defaultValue: true,
+      admin: {
+        description:
+          'Plays the electrical wireframe transition between the sketch video and the rotating 3D logo. Turning this off restores the plain crossfade.',
+      },
+    },
+    {
+      name: 'ignitionTiming',
+      type: 'group',
+      label: 'Ignition — timing',
+      admin: {
+        description:
+          'Total length, and the phase boundaries as fractions of it. Changing the duration retimes everything proportionally.',
+      },
+      fields: [
+        {
+          name: 'ignitionMs',
+          type: 'number',
+          defaultValue: 2000,
+          min: 600,
+          max: 4000,
+          admin: { description: 'Total length of the transition. The main pacing control.' },
+        },
+        {
+          name: 'seedEnd',
+          type: 'number',
+          defaultValue: 0.12,
+          min: 0,
+          max: 0.5,
+          admin: { description: 'Fraction where the core bloom ends and the front starts moving' },
+        },
+        {
+          name: 'frontEnd',
+          type: 'number',
+          defaultValue: 0.78,
+          min: 0.2,
+          max: 1,
+          admin: { description: 'Fraction where the charge front finishes crossing the logo' },
+        },
+        {
+          name: 'cueFrac',
+          type: 'number',
+          defaultValue: 0.8,
+          min: 0.1,
+          max: 1,
+          admin: { description: 'Fraction where the floating words / orbs are told to enter' },
+        },
+      ],
+    },
+    {
+      name: 'ignitionShape',
+      type: 'group',
+      label: 'Ignition — shape',
+      admin: { description: 'Where the charge starts and how wide its crest is' },
+      fields: [
+        { name: 'seedOffsetX', type: 'number', defaultValue: 0, min: -1, max: 1 },
+        { name: 'seedOffsetY', type: 'number', defaultValue: 0, min: -1, max: 1 },
+        { name: 'seedOffsetZ', type: 'number', defaultValue: 0, min: -1, max: 1 },
+        {
+          name: 'frontSoftness',
+          type: 'number',
+          defaultValue: 0.18,
+          min: 0.02,
+          max: 1,
+          admin: { description: 'Width of the glowing crest, as a fraction of logo height' },
+        },
+        {
+          name: 'wakeLag',
+          type: 'number',
+          defaultValue: 0.1,
+          min: 0,
+          max: 0.6,
+          admin: { description: 'How far behind the crest the solid surfaces appear' },
+        },
+        { name: 'coreRadius', type: 'number', defaultValue: 0.22, min: 0, max: 1 },
+        { name: 'coreStrength', type: 'number', defaultValue: 1, min: 0, max: 2 },
+      ],
+    },
+    {
+      name: 'ignitionCage',
+      type: 'group',
+      label: 'Ignition — cage',
+      admin: { description: 'The scribble wireframe that carries the charge' },
+      fields: [
+        {
+          name: 'cageDensity',
+          type: 'number',
+          defaultValue: 0.55,
+          min: 0.05,
+          max: 1,
+          admin: {
+            description:
+              'Fraction of wireframe lines drawn. At 1 it looks like CAD; lower reads as pencil scribble.',
+          },
+        },
+        {
+          name: 'cageDensityMobile',
+          type: 'number',
+          defaultValue: 0.3,
+          min: 0.05,
+          max: 1,
+          admin: { description: 'Same, on screens below 640px' },
+        },
+        { name: 'cageOpacity', type: 'number', defaultValue: 0.9, min: 0, max: 1 },
+        {
+          name: 'cageSeed',
+          type: 'number',
+          defaultValue: 1337,
+          min: 0,
+          max: 999999,
+          admin: {
+            description: 'Changes which lines are drawn. Same number = same cage every load.',
+          },
+        },
+      ],
+    },
+    {
+      name: 'ignitionColor',
+      type: 'group',
+      label: 'Ignition — colour',
+      admin: { description: 'The graphite-to-hot ramp, and the dark mass that makes red readable' },
+      fields: [
+        {
+          name: 'coldColor',
+          type: 'text',
+          defaultValue: '#2B2A27',
+          validate: hexColour,
+          admin: { description: 'Unlit cage — matches the pencil in the sketch video' },
+        },
+        { name: 'warmColor', type: 'text', defaultValue: '#8E1114', validate: hexColour },
+        { name: 'hotColor', type: 'text', defaultValue: '#C8341A', validate: hexColour },
+        {
+          name: 'crestColor',
+          type: 'text',
+          defaultValue: '#FFF8E0',
+          validate: hexColour,
+          admin: { description: 'The very peak of the charge. Kept small and brief.' },
+        },
+        {
+          name: 'darkMassOpacity',
+          type: 'number',
+          defaultValue: 0.12,
+          min: 0,
+          max: 0.6,
+          admin: {
+            description:
+              'Faint dark fill shown only during the transition. Without it the red washes out against the paper background.',
+          },
+        },
+        { name: 'glowDecay', type: 'number', defaultValue: 2.4, min: 0.2, max: 8 },
       ],
     },
   ],

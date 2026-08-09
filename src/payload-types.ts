@@ -835,6 +835,87 @@ export interface HeroEffect {
      */
     dragThresholdPx?: number | null;
   };
+  /**
+   * Plays the electrical wireframe transition between the sketch video and the rotating 3D logo. Turning this off restores the plain crossfade.
+   */
+  ignitionEnabled?: boolean | null;
+  /**
+   * Total length, and the phase boundaries as fractions of it. Changing the duration retimes everything proportionally.
+   */
+  ignitionTiming?: {
+    /**
+     * Total length of the transition. The main pacing control.
+     */
+    ignitionMs?: number | null;
+    /**
+     * Fraction where the core bloom ends and the front starts moving
+     */
+    seedEnd?: number | null;
+    /**
+     * Fraction where the charge front finishes crossing the logo
+     */
+    frontEnd?: number | null;
+    /**
+     * Fraction where the floating words / orbs are told to enter
+     */
+    cueFrac?: number | null;
+  };
+  /**
+   * Where the charge starts and how wide its crest is
+   */
+  ignitionShape?: {
+    seedOffsetX?: number | null;
+    seedOffsetY?: number | null;
+    seedOffsetZ?: number | null;
+    /**
+     * Width of the glowing crest, as a fraction of logo height
+     */
+    frontSoftness?: number | null;
+    /**
+     * How far behind the crest the solid surfaces appear
+     */
+    wakeLag?: number | null;
+    coreRadius?: number | null;
+    coreStrength?: number | null;
+  };
+  /**
+   * The scribble wireframe that carries the charge
+   */
+  ignitionCage?: {
+    /**
+     * Fraction of wireframe lines drawn. At 1 it looks like CAD; lower reads as pencil scribble.
+     */
+    cageDensity?: number | null;
+    /**
+     * Same, on screens below 640px
+     */
+    cageDensityMobile?: number | null;
+    cageOpacity?: number | null;
+    /**
+     * Changes which lines are drawn. Same number = same cage every load.
+     */
+    cageSeed?: number | null;
+  };
+  /**
+   * The graphite-to-hot ramp, and the dark mass that makes red readable
+   */
+  ignitionColor?: {
+    /**
+     * Unlit cage — matches the pencil in the sketch video
+     */
+    coldColor?: string | null;
+    warmColor?: string | null;
+    hotColor?: string | null;
+    /**
+     * The very peak of the charge. Kept small and brief.
+     */
+    crestColor?: string | null;
+    /**
+     * Faint dark fill shown only during the transition. Without it the red washes out against the paper background.
+     */
+    darkMassOpacity?: number | null;
+    glowDecay?: number | null;
+  };
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -923,6 +1004,44 @@ export interface HeroEffectsSelect<T extends boolean = true> {
         vibrateFrac?: T;
         vibratePhaseStep?: T;
         dragThresholdPx?: T;
+      };
+  ignitionEnabled?: T;
+  ignitionTiming?:
+    | T
+    | {
+        ignitionMs?: T;
+        seedEnd?: T;
+        frontEnd?: T;
+        cueFrac?: T;
+      };
+  ignitionShape?:
+    | T
+    | {
+        seedOffsetX?: T;
+        seedOffsetY?: T;
+        seedOffsetZ?: T;
+        frontSoftness?: T;
+        wakeLag?: T;
+        coreRadius?: T;
+        coreStrength?: T;
+      };
+  ignitionCage?:
+    | T
+    | {
+        cageDensity?: T;
+        cageDensityMobile?: T;
+        cageOpacity?: T;
+        cageSeed?: T;
+      };
+  ignitionColor?:
+    | T
+    | {
+        coldColor?: T;
+        warmColor?: T;
+        hotColor?: T;
+        crestColor?: T;
+        darkMassOpacity?: T;
+        glowDecay?: T;
       };
   updatedAt?: T;
   createdAt?: T;

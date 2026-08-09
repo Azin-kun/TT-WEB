@@ -88,6 +88,26 @@ const run = async () => {
       },
       body: { skinOpacity: 0.6, bodyOpacity: 0, bodyEdgeOpacity: 0.9, bodyEdgeAngle: 26 },
       feel: { vibrateFrac: 0.006, vibratePhaseStep: 1.1, dragThresholdPx: 6 },
+      ignitionEnabled: true,
+      ignitionTiming: { ignitionMs: 2000, seedEnd: 0.12, frontEnd: 0.78, cueFrac: 0.8 },
+      ignitionShape: {
+        seedOffsetX: 0,
+        seedOffsetY: 0,
+        seedOffsetZ: 0,
+        frontSoftness: 0.18,
+        wakeLag: 0.1,
+        coreRadius: 0.22,
+        coreStrength: 1,
+      },
+      ignitionCage: { cageDensity: 0.55, cageDensityMobile: 0.3, cageOpacity: 0.9, cageSeed: 1337 },
+      ignitionColor: {
+        coldColor: '#2B2A27',
+        warmColor: '#8E1114',
+        hotColor: '#C8341A',
+        crestColor: '#FFF8E0',
+        darkMassOpacity: 0.12,
+        glowDecay: 2.4,
+      },
     },
   })
 
