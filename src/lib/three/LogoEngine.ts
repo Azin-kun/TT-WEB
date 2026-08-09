@@ -652,7 +652,12 @@ export class LogoEngine {
     this.camera.updateProjectionMatrix()
   }
 
-  dispose() {
+  /**
+   * @param releaseContext pass true ONLY when the canvas element is being
+   *   discarded along with the engine. It frees the WebGL context immediately
+   *   rather than at GC, at the cost of making that canvas permanently unusable.
+   */
+  dispose(releaseContext = false) {
     this.disposed = true
     cancelAnimationFrame(this.raf)
     window.removeEventListener('pointermove', this.onMove)
@@ -684,5 +689,14 @@ export class LogoEngine {
     // Same instances as bodyMaterials — disposed above, just drop the refs.
     this.bodySurfaceMats = []
     this.renderer.dispose()
+
+    // renderer.dispose() frees GPU resources but does NOT release the WebGL
+    // context itself; that lingers until GC, and browsers cap live contexts at
+    // ~16. Releasing it explicitly is therefore tempting — but
+    // forceContextLoss() PERMANENTLY POISONS THE CANVAS ELEMENT: no further
+    // context can ever be created on it. It is only safe when the canvas is
+    // being thrown away too, which the caller knows and this class does not.
+    // Hence opt-in.
+    if (releaseContext) this.renderer.forceContextLoss()
   }
 }

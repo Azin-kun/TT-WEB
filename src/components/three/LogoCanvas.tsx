@@ -40,7 +40,21 @@ export default function LogoCanvas({
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const engine = new LogoEngine(canvas, config, ignition)
+
+    // WebGL can be unavailable outright — disabled, blocklisted, or every live
+    // context already taken (browsers cap them at ~16). The renderer throws
+    // synchronously in that case, and an unhandled throw here takes the whole
+    // hero down. Degrade instead: no 3D logo, but the page survives and the
+    // floating words still arrive, since they hang off `done`.
+    let engine: LogoEngine
+    try {
+      engine = new LogoEngine(canvas, config, ignition)
+    } catch (err) {
+      console.error('LogoEngine: WebGL unavailable, hero will render without the 3D logo', err)
+      cueRef.current?.()
+      doneRef.current?.()
+      return
+    }
     engineRef.current = engine
 
     const offIgnition = engine.onIgnition((e) => {

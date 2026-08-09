@@ -117,7 +117,8 @@ export default function ShatterLab({ initial }: { initial: SeparationConfig }) {
       cancelAnimationFrame(raf)
       window.removeEventListener('resize', onResize)
       delete (window as unknown as { __ttShatter?: LogoEngine }).__ttShatter
-      engine.dispose()
+      // Safe to release the context: the canvas is discarded with the engine.
+      engine.dispose(true)
     }
   }, [])
 
@@ -126,7 +127,11 @@ export default function ShatterLab({ initial }: { initial: SeparationConfig }) {
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--bg, #F6F1E7)', position: 'relative' }}>
       <div style={{ position: 'absolute', inset: 0 }}>
+        {/* Keyed on nonce so every rebuild gets a FRESH canvas element — the
+            engine releases its WebGL context on dispose, which permanently
+            poisons the canvas it was using. */}
         <canvas
+          key={nonce}
           ref={canvasRef}
           aria-label="Separation tuning bench"
           role="img"

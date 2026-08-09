@@ -195,7 +195,10 @@ export default function IgnitionLab({
       if (bridgeTimer) clearTimeout(bridgeTimer)
       window.removeEventListener('resize', onResize)
       delete (window as unknown as { __ttIgnition?: LogoEngine }).__ttIgnition
-      engine.dispose()
+      // Safe to release the context: the canvas this engine used is being
+      // discarded with it (see the key on <canvas>). Without releasing, each
+      // rebuild leaks a context and the browser's ~16 limit is hit in seconds.
+      engine.dispose(true)
       engineRef.current = null
     }
   }, [separation, withOverlay])
@@ -204,10 +207,27 @@ export default function IgnitionLab({
 
   const replay = () => setNonce((n) => n + 1)
 
+  // Dragging a slider fires onChange per pixel of travel. Remounting on each of
+  // those builds a WebGL context per tick, and browsers cap live contexts at
+  // ~16 — which is how this bench originally exhausted them in seconds. The
+  // engine now releases its context properly, but coalescing the rebuilds is
+  // still the difference between a usable bench and a slideshow.
+  const replayTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const replaySoon = useCallback(() => {
+    if (replayTimer.current) clearTimeout(replayTimer.current)
+    replayTimer.current = setTimeout(() => setNonce((n) => n + 1), 220)
+  }, [])
+  useEffect(() => () => clearTimeout(replayTimer.current), [])
+
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--bg, #F6F1E7)', position: 'relative' }}>
       <div style={{ position: 'absolute', inset: 0 }}>
+        {/* Keyed on nonce so every rebuild gets a FRESH canvas element. The old
+            engine releases its WebGL context on dispose, which permanently
+            poisons the canvas it was using — reusing one element would mean the
+            second rebuild could never create a context again. */}
         <canvas
+          key={nonce}
           ref={canvasRef}
           aria-label="Ignition tuning bench"
           role="img"
@@ -292,7 +312,7 @@ export default function IgnitionLab({
                   onChange={(e) => {
                     cfgRef.current[r.key] = parseFloat(e.target.value)
                     force((n) => n + 1)
-                    replay()
+                    replaySoon()
                   }}
                 />
               </label>
@@ -315,7 +335,7 @@ export default function IgnitionLab({
                 defaultValue={hex(cfgRef.current[key])}
                 onChange={(e) => {
                   cfgRef.current[key] = parseInt(e.target.value.slice(1), 16)
-                  replay()
+                  replaySoon()
                 }}
               />
             </label>
