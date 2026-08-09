@@ -339,12 +339,31 @@ export class LogoEngine {
    */
   startIgnition() {
     this.wantIgnition = true
+    this.resetPose()
     if (this.ignition) {
       this.ignition.start()
       return
     }
     // Turned off outright: consumers still need the full sequence.
     if (!this.ignitionConfig.ENABLED) this.finishIgnitionNow()
+  }
+
+  /**
+   * Return the mark to frontal at the moment the bridge begins.
+   *
+   * The engine renders from load(), which is several seconds before the sketch
+   * video ends, and the idle spin starts 1.2s after that — so by the handoff the
+   * mesh has quietly turned ~150° behind an invisible canvas. The old 0.6s
+   * crossfade hid it; the ignition does not, and an oblique cage appearing under
+   * a frontal video frame is exactly the cut the bridge exists to avoid.
+   *
+   * Zeroing idleTimer also holds the mark still while the charge crosses it, so
+   * the idle rotation resumes during settle rather than fighting the effect.
+   */
+  private resetPose() {
+    this.spinY = 0
+    this.vel = 0
+    this.idleTimer = 0
   }
 
   /**
