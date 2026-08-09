@@ -51,6 +51,21 @@ export type HeroEffectsIgnitionInput = {
     pulseEnabled?: boolean | null
     pulseMs?: number | null
   } | null
+  ignitionLife?: {
+    wireJitter?: number | null
+    wireSpeed?: number | null
+    sparkStagger?: number | null
+    sparkRate?: number | null
+    sparkDensity?: number | null
+    sparkIdle?: number | null
+  } | null
+  ignitionEmbers?: {
+    emberEnabled?: boolean | null
+    emberDensity?: number | null
+    emberSize?: number | null
+    emberTwinkle?: number | null
+    emberOpacity?: number | null
+  } | null
 }
 
 const HEX = /^#[0-9a-fA-F]{6}$/
@@ -77,6 +92,8 @@ export function resolveIgnition(cms: HeroEffectsIgnitionInput | null | undefined
   const c = cms?.ignitionColor ?? {}
   const o = cms?.ignitionOverlay ?? {}
   const p = cms?.ignitionPulse ?? {}
+  const l = cms?.ignitionLife ?? {}
+  const e = cms?.ignitionEmbers ?? {}
 
   // Overlay phase boundaries obey the same rule as the ignition's own: ordered
   // and inside 0..1, enforced here because the REST API bypasses the admin UI.
@@ -127,6 +144,19 @@ export function resolveIgnition(cms: HeroEffectsIgnitionInput | null | undefined
     MORPH_START: morphStart,
     PULSE_ENABLED: typeof p.pulseEnabled === 'boolean' ? p.pulseEnabled : d.PULSE_ENABLED,
     PULSE_MS: num(p.pulseMs, d.PULSE_MS),
+    WIRE_JITTER: num(l.wireJitter, d.WIRE_JITTER),
+    WIRE_SPEED: num(l.wireSpeed, d.WIRE_SPEED),
+    SPARK_STAGGER: num(l.sparkStagger, d.SPARK_STAGGER),
+    SPARK_RATE: num(l.sparkRate, d.SPARK_RATE),
+    // A flare window of 1 would leave every segment permanently lit, which is
+    // a white-out rather than sparking.
+    SPARK_DENSITY: Math.min(0.9, clamp01(num(l.sparkDensity, d.SPARK_DENSITY))),
+    SPARK_IDLE: clamp01(num(l.sparkIdle, d.SPARK_IDLE)),
+    EMBER_ENABLED: typeof e.emberEnabled === 'boolean' ? e.emberEnabled : d.EMBER_ENABLED,
+    EMBER_DENSITY: clamp01(num(e.emberDensity, d.EMBER_DENSITY)),
+    EMBER_SIZE: num(e.emberSize, d.EMBER_SIZE),
+    EMBER_TWINKLE: num(e.emberTwinkle, d.EMBER_TWINKLE),
+    EMBER_OPACITY: clamp01(num(e.emberOpacity, d.EMBER_OPACITY)),
   }
 }
 
@@ -176,6 +206,21 @@ export function toIgnitionPayload(c: IgnitionConfig): HeroEffectsIgnitionInput {
     ignitionPulse: {
       pulseEnabled: c.PULSE_ENABLED,
       pulseMs: c.PULSE_MS,
+    },
+    ignitionLife: {
+      wireJitter: c.WIRE_JITTER,
+      wireSpeed: c.WIRE_SPEED,
+      sparkStagger: c.SPARK_STAGGER,
+      sparkRate: c.SPARK_RATE,
+      sparkDensity: c.SPARK_DENSITY,
+      sparkIdle: c.SPARK_IDLE,
+    },
+    ignitionEmbers: {
+      emberEnabled: c.EMBER_ENABLED,
+      emberDensity: c.EMBER_DENSITY,
+      emberSize: c.EMBER_SIZE,
+      emberTwinkle: c.EMBER_TWINKLE,
+      emberOpacity: c.EMBER_OPACITY,
     },
   }
 }

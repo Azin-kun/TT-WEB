@@ -89,6 +89,46 @@ First pulse fires at `SEPARATE_START` of the hold charge (the moment panels begi
 That is now wrong — the cage must survive for the rest of the session so pulses can reuse it. It is hidden
 (`uGlobalFade = 0`) instead, and disposed only in `dispose()`.
 
+## 2c. Living cage — writhing wires, random sparks, ember dots (owner, 2026-08-09)
+
+> "Make sure the wires of the cage is dynamic and random, and also the ignition pulse is sparking
+> dynamically and randomly. Make sure our own creation near to the video reference behavior."
+
+Verified against consecutive reference frames at high zoom: the web genuinely **deforms** frame to frame
+rather than merely rotating; the ember dots **twinkle and drift**; and the flares are **local and irregular**,
+appearing in different places rather than as a uniform ring.
+
+| Layer | Behaviour |
+|---|---|
+| **Writhing wires** | Each vertex takes its phase and drift axis from a hash of its **own position**. Endpoints of a segment hash differently and drift apart, so the web deforms rather than translating — but junction vertices that share a position hash identically and move together, so the mesh stays connected instead of tearing. Runs always, as in the reference. |
+| **Ragged front** | Each vertex's distance to the charge front is randomly offset (`SPARK_STAGGER`), so the leading edge is broken rather than a clean expanding ring. |
+| **Random flares** | Independent of the front: each segment lights on its own rate and phase, so the cage keeps crackling instead of going dead behind the crest. Gated by `SPARK_LEVEL` — `SPARK_IDLE` while cold over the video, full once ignited, decaying with the cage through settle. |
+| **Ember dots** | Points at a subset of cage junctions, on the same colour ramp, twinkling. Opacity is gated on local heat so they cluster around the charge rather than peppering the whole cage. **Additively blended**, unlike the wires: embers are pure light and have nothing to darken, whereas the cold cage must darken the paper. |
+
+Embers reuse the wires' `tt_shaped()` and `tt_frontDist()` verbatim, so they stay exactly in register with
+the cage through the bloom and the morph rather than drifting out of alignment with it.
+
+### 2c.1 The point-size trap — measured, not theorised
+
+The first ember implementation ran at **5.9 fps**. Toggling embers off restored **87 fps**, isolating them as
+the entire cost.
+
+Cause: `gl_PointSize` used the common three.js idiom `300.0 / -mv.z`, which assumes a much larger world
+scale. This scene's camera sits at `CAMERA_Z = 2.4`, so that constant produced points of **~437 px** — about
+13,000 of them, additively blended. Billions of fragment operations per frame; it would have been severe on a
+real GPU too, not just in software rasterisation.
+
+Two fixes, both worth keeping:
+
+1. **Reference-depth attenuation with a hard clamp.** `uPointRef` is the camera's distance to the logo, so
+   `EMBER_SIZE` is literally pixels *at the logo's depth*, with mild attenuation either side, clamped to
+   24 px. The clamp is a backstop: no camera or config value can reproduce the blow-up.
+2. **Cull cold embers in the vertex shader.** A fragment `discard` still pays full rasterisation cost. Only a
+   small fraction of the cage is hot at any moment, so zero-sizing cold embers before rasterisation is the
+   difference between drawing every ember and drawing the few that are lit.
+
+Result: **73.6 fps with embers on**, a 12× improvement, still under software rasterisation.
+
 ## 3. Visual target
 
 Timing anchors to what exists: the video runs 7.67 s, the headline dissolves by 7 s, so the stage is clear

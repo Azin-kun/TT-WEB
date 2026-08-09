@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { CALIB } from '../calibration'
 import type { IgnitionConfig, IgnitionUniforms } from './types'
 
 /**
@@ -53,6 +54,17 @@ export function makeIgnitionUniforms(
     uSphereR: { value: sphereR },
     uBloomR: { value: bloomR },
     uPolySides: { value: config.POLY_SIDES },
+    uTime: { value: 0 },
+    uJitter: { value: config.WIRE_JITTER * logoRadius },
+    uJitSpeed: { value: config.WIRE_SPEED },
+    uSparkStagger: { value: config.SPARK_STAGGER * logoRadius },
+    uSparkRate: { value: config.SPARK_RATE },
+    uSparkDensity: { value: config.SPARK_DENSITY },
+    uSparkLevel: { value: config.SPARK_IDLE },
+    uEmberSize: { value: config.EMBER_SIZE },
+    uEmberTwinkle: { value: config.EMBER_TWINKLE },
+    uEmberOpacity: { value: config.EMBER_OPACITY },
+    uPointRef: { value: CALIB.CAMERA_Z },
   }
 }
 
@@ -66,7 +78,12 @@ export function makeIgnitionUniforms(
  * out along its own direction from the centre. Every vertex therefore has a
  * defined destination and the morph cannot tear.
  */
-const CAGE_VERT = /* glsl */ `
+/**
+ * Shape, writhe and per-vertex randomness — shared verbatim by the cage lines
+ * and the ember points, so the embers sit exactly on the cage at every stage of
+ * the morph rather than drifting out of register with it.
+ */
+const SHARED_SHAPE_GLSL = /* glsl */ `
 uniform vec3  uSeed;
 uniform vec3  uCentre;
 uniform float uSphereR;
@@ -74,7 +91,15 @@ uniform float uBloomR;
 uniform float uPolySides;
 uniform float uBloom;
 uniform float uMorph;
-varying float vDist;
+uniform float uTime;
+uniform float uJitter;
+uniform float uJitSpeed;
+uniform float uSparkStagger;
+
+float tt_hash11(float n) { return fract(sin(n) * 43758.5453123); }
+float tt_hash13(vec3 p) {
+  return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453123);
+}
 
 // Radius of a regular N-gon of inradius 1 along direction d. Peaks at
 // 1/cos(pi/N) on the corners, 1 at the edge midpoints.
@@ -85,13 +110,22 @@ float tt_polyR(vec2 d, float N) {
   return 1.0 / max(0.2, cos(k));
 }
 
-void main() {
-  vec3 finalPos = position;
+/**
+ * Morphed position plus the per-vertex writhe.
+ *
+ * The writhe is keyed off a hash of the vertex's OWN position, which matters:
+ * the two endpoints of a segment hash differently and so drift apart, making the
+ * web deform rather than translate — but endpoints that share a position (the
+ * junctions where segments meet) hash identically and move together, so the mesh
+ * stays connected instead of tearing itself apart.
+ */
+vec3 tt_shaped(vec3 pos, float seed) {
+  vec3 p = pos;
 
-  // Skip the whole morph once the cage is home — the common case, since the
-  // charge and settle phases run entirely at uMorph = 1.
+  // Skip the morph once the cage is home — the common case, since the charge,
+  // settle and every pulse run entirely at uMorph = 1.
   if (uMorph < 0.999) {
-    vec3 rel = position - uCentre;
+    vec3 rel = pos - uCentre;
     vec3 dir = rel / max(1e-5, length(rel));
 
     vec2 dxy = rel.xy;
@@ -101,12 +135,52 @@ void main() {
 
     vec3 pSphere = uCentre + dir * uSphereR;
     vec3 pPoly   = uCentre + dir * (uBloomR * tt_polyR(normalize(dxy), uPolySides));
-    finalPos = mix(mix(pSphere, pPoly, uBloom), position, uMorph);
+    p = mix(mix(pSphere, pPoly, uBloom), pos, uMorph);
   }
 
+  vec3 axis = normalize(vec3(
+    tt_hash11(seed * 13.1) - 0.5,
+    tt_hash11(seed * 27.3) - 0.5,
+    tt_hash11(seed * 41.7) - 0.5
+  ) + vec3(1e-4));
+  p += axis * (uJitter * sin(uTime * uJitSpeed + seed * 6.2831853));
+  return p;
+}
+
+/**
+ * Distance to the charge front, randomly offset per vertex. Without the offset
+ * the front is a clean expanding ring; with it the leading edge is broken and
+ * ragged, which is what the reference actually shows.
+ */
+float tt_frontDist(vec3 p, float seed) {
+  return distance(p, uSeed) + (seed - 0.5) * 2.0 * uSparkStagger;
+}
+`
+
+/** Independent random flares: each segment lights on its own rate and phase. */
+const SPARK_GLSL = /* glsl */ `
+uniform float uSparkRate;
+uniform float uSparkDensity;
+uniform float uSparkLevel;
+
+float tt_flare(float seed) {
+  float ph = fract(uTime * uSparkRate * (0.4 + seed) + seed * 7.13);
+  return smoothstep(1.0 - uSparkDensity, 1.0, ph) * uSparkLevel;
+}
+`
+
+const CAGE_VERT = /* glsl */ `
+${SHARED_SHAPE_GLSL}
+varying float vDist;
+varying float vSeed;
+
+void main() {
+  float seed = tt_hash13(position);
+  vSeed = seed;
+  vec3 finalPos = tt_shaped(position, seed);
   // Measured on the MORPHED position, so the charge front tracks the cage where
   // it actually is — across the bloomed polygon, not where the logo will end up.
-  vDist = distance(finalPos, uSeed);
+  vDist = tt_frontDist(finalPos, seed);
   gl_Position = projectionMatrix * modelViewMatrix * vec4(finalPos, 1.0);
 }
 `
@@ -129,12 +203,17 @@ uniform vec3  uCold;
 uniform vec3  uWarm;
 uniform vec3  uHot;
 uniform vec3  uCrest;
+uniform float uTime;
+${SPARK_GLSL}
 varying float vDist;
+varying float vSeed;
 
 void main() {
   float crest = 1.0 - smoothstep(0.0, uSoftness, abs(vDist - uFront));
   float core  = uCoreStrength * uCoreLive * (1.0 - smoothstep(0.0, uCoreRadius, vDist));
-  float heat  = clamp(max(crest, core), 0.0, 1.0);
+  // Sparks fire independently of where the front is, so the cage keeps
+  // crackling instead of going dead behind the crest.
+  float heat  = clamp(max(max(crest, core), tt_flare(vSeed)), 0.0, 1.0);
 
   vec3 c = mix(uCold, uWarm, smoothstep(0.0, 0.40, heat));
   c = mix(c, uHot,   smoothstep(0.40, 0.75, heat));
@@ -173,11 +252,141 @@ export function makeCageMaterial(u: IgnitionUniforms): THREE.ShaderMaterial {
       uSphereR: u.uSphereR,
       uBloomR: u.uBloomR,
       uPolySides: u.uPolySides,
+      uTime: u.uTime,
+      uJitter: u.uJitter,
+      uJitSpeed: u.uJitSpeed,
+      uSparkStagger: u.uSparkStagger,
+      uSparkRate: u.uSparkRate,
+      uSparkDensity: u.uSparkDensity,
+      uSparkLevel: u.uSparkLevel,
     },
     vertexShader: CAGE_VERT,
     fragmentShader: CAGE_FRAG,
     transparent: true,
     depthWrite: false,
+  })
+}
+
+const EMBER_VERT = /* glsl */ `
+${SHARED_SHAPE_GLSL}
+${SPARK_GLSL}
+uniform float uFront;
+uniform float uSoftness;
+uniform float uCoreRadius;
+uniform float uCoreStrength;
+uniform float uCoreLive;
+uniform float uEmberSize;
+uniform float uEmberTwinkle;
+uniform float uPointRef;
+uniform float uGlobalFade;
+varying float vHeat;
+varying float vTw;
+
+void main() {
+  float seed = tt_hash13(position);
+  vec3 p = tt_shaped(position, seed);
+  float d = tt_frontDist(p, seed);
+
+  float crest = 1.0 - smoothstep(0.0, uSoftness, abs(d - uFront));
+  float core  = uCoreStrength * uCoreLive * (1.0 - smoothstep(0.0, uCoreRadius, d));
+  vHeat = clamp(max(max(crest, core), tt_flare(seed)), 0.0, 1.0);
+  vTw = 0.45 + 0.55 * (0.5 + 0.5 * sin(uTime * uEmberTwinkle + seed * 19.7));
+
+  // Cull cold embers HERE rather than discarding in the fragment stage. The
+  // fragment discard still pays full rasterisation cost, and only a small
+  // fraction of the cage is hot at any moment — culling early is the difference
+  // between drawing every ember and drawing the handful that are actually lit.
+  if (vHeat < 0.06 || uGlobalFade <= 0.001) {
+    gl_PointSize = 0.0;
+    gl_Position = vec4(2.0, 2.0, 2.0, 1.0); // outside clip space
+    return;
+  }
+
+  vec4 mv = modelViewMatrix * vec4(p, 1.0);
+  // uPointRef is the camera's distance to the logo, so uEmberSize is literally
+  // pixels AT the logo's depth, with mild attenuation either side of it.
+  //
+  // The usual three.js idiom here is a hard-coded 300.0, which assumes a much
+  // larger world scale. This scene's camera sits 2.4 units out, so that constant
+  // produced ~437px points — thousands of them, additively blended. The clamp is
+  // a hard backstop so no camera or config value can ever reproduce that.
+  float atten = uPointRef / max(0.05, -mv.z);
+  gl_PointSize = clamp(uEmberSize * vTw * atten, 1.0, 24.0);
+  gl_Position = projectionMatrix * mv;
+}
+`
+
+/**
+ * Round glowing dots on the same ramp as the wires. Their opacity is gated on
+ * local heat, so they cluster around the charge and the sparks rather than
+ * peppering the whole cage — which is how the reference reads.
+ */
+const EMBER_FRAG = /* glsl */ `
+uniform vec3  uWarm;
+uniform vec3  uHot;
+uniform vec3  uCrest;
+uniform float uGlobalFade;
+uniform float uEmberOpacity;
+varying float vHeat;
+varying float vTw;
+
+void main() {
+  vec2 c = gl_PointCoord - 0.5;
+  float r = length(c);
+  if (r > 0.5) discard;
+
+  vec3 col = mix(uWarm, uHot, smoothstep(0.10, 0.60, vHeat));
+  col = mix(col, uCrest, smoothstep(0.70, 1.00, vHeat));
+
+  float soft = smoothstep(0.5, 0.08, r);
+  float a = soft * uEmberOpacity * uGlobalFade * vTw * smoothstep(0.06, 0.35, vHeat);
+  if (a <= 0.002) discard;
+  gl_FragColor = vec4(col, a);
+}
+`
+
+/**
+ * ADDITIVE, unlike the cage. Embers are pure light — they should bloom over
+ * whatever is behind them. The wires use normal blending because they spend
+ * most of the transition cold and have to darken the paper; the embers only
+ * ever exist where there is heat, so they have nothing to darken.
+ */
+export function makeEmberMaterial(u: IgnitionUniforms): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uSeed: u.uSeed,
+      uCentre: u.uCentre,
+      uSphereR: u.uSphereR,
+      uBloomR: u.uBloomR,
+      uPolySides: u.uPolySides,
+      uBloom: u.uBloom,
+      uMorph: u.uMorph,
+      uTime: u.uTime,
+      uJitter: u.uJitter,
+      uJitSpeed: u.uJitSpeed,
+      uSparkStagger: u.uSparkStagger,
+      uSparkRate: u.uSparkRate,
+      uSparkDensity: u.uSparkDensity,
+      uSparkLevel: u.uSparkLevel,
+      uFront: u.uFront,
+      uSoftness: u.uSoftness,
+      uCoreRadius: u.uCoreRadius,
+      uCoreStrength: u.uCoreStrength,
+      uCoreLive: u.uCoreLive,
+      uGlobalFade: u.uGlobalFade,
+      uEmberSize: u.uEmberSize,
+      uEmberTwinkle: u.uEmberTwinkle,
+      uEmberOpacity: u.uEmberOpacity,
+      uPointRef: u.uPointRef,
+      uWarm: u.uWarm,
+      uHot: u.uHot,
+      uCrest: u.uCrest,
+    },
+    vertexShader: EMBER_VERT,
+    fragmentShader: EMBER_FRAG,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
   })
 }
 

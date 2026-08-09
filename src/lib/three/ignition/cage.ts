@@ -115,3 +115,54 @@ export function buildIgnitionCage(
   lines.frustumCulled = false
   return lines
 }
+
+/**
+ * Glowing dots at a subset of the cage's own vertices.
+ *
+ * Built from the cage's finished buffer rather than from the source geometry,
+ * so every ember sits exactly on a wire junction. Both shaders run the same
+ * tt_shaped(), so they stay in register through the bloom and the morph.
+ *
+ * Returns null when nothing was produced.
+ */
+export function buildEmbers(
+  cage: THREE.LineSegments,
+  config: IgnitionConfig,
+  material: THREE.Material,
+): THREE.Points | null {
+  const src = cage.geometry.getAttribute('position') as THREE.BufferAttribute
+  const total = src.count
+  const d = Math.min(1, Math.max(0, config.EMBER_DENSITY))
+  const keep = Math.round(total * d)
+  if (keep <= 0) return null
+
+  // Same partial Fisher-Yates as the cage subsample, but over VERTICES rather
+  // than whole segments — embers are points, so there is nothing to keep intact.
+  const idx = new Uint32Array(total)
+  for (let i = 0; i < total; i++) idx[i] = i
+  const rand = mulberry32(config.CAGE_SEED ^ 0x9e37)
+  const take = Math.min(keep, total)
+  for (let i = 0; i < take; i++) {
+    const j = i + Math.floor(rand() * (total - i))
+    const t = idx[i]
+    idx[i] = idx[j]
+    idx[j] = t
+  }
+
+  const arr = src.array as ArrayLike<number>
+  const out = new Float32Array(take * 3)
+  for (let i = 0; i < take; i++) {
+    const s = idx[i] * 3
+    out[i * 3] = arr[s]
+    out[i * 3 + 1] = arr[s + 1]
+    out[i * 3 + 2] = arr[s + 2]
+  }
+
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute('position', new THREE.BufferAttribute(out, 3))
+
+  const pts = new THREE.Points(geo, material)
+  pts.renderOrder = 4 // above the cage lines
+  pts.frustumCulled = false
+  return pts
+}

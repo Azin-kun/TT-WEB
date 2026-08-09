@@ -76,6 +76,8 @@ export class IgnitionController {
     this.u.uFront.value = 0
     this.u.uBloom.value = 0
     this.u.uMorph.value = 0
+    // Alive but not yet ignited: the cage still crackles faintly over the video.
+    this.u.uSparkLevel.value = this.config.SPARK_IDLE
   }
 
   start() {
@@ -84,6 +86,7 @@ export class IgnitionController {
     this.u.uGlobalFade.value = 1
     this.u.uWakeActive.value = 1
     this.u.uCoreLive.value = 1
+    this.u.uSparkLevel.value = 1
     this.emit('seed')
     this.apply(0)
   }
@@ -108,6 +111,7 @@ export class IgnitionController {
     this.u.uGlobalFade.value = 0
     this.u.uWakeActive.value = 0
     this.u.uCoreLive.value = 0
+    this.u.uSparkLevel.value = 0
     this.u.uFront.value = this.reach * 2
     // However we got here, the cage ends at the logo's true shape — a forced
     // finish must never leave it stranded as a sphere.
@@ -173,9 +177,12 @@ export class IgnitionController {
     // Cage holds full opacity until the front is done, then fades through settle.
     if (p <= FRONT_END) {
       this.u.uGlobalFade.value = 1
+      this.u.uSparkLevel.value = 1
     } else {
       const s = (p - FRONT_END) / Math.max(1e-4, 1 - FRONT_END)
       this.u.uGlobalFade.value = Math.max(0, 1 - s)
+      // Sparks die off with the cage rather than crackling on a ghost.
+      this.u.uSparkLevel.value = Math.max(0, 1 - s)
     }
   }
 

@@ -6,10 +6,11 @@ import { partitionForShatter } from './shatter/partition'
 import { makeShatterUniforms, patchForShatter } from './shatter/shatterMaterial'
 import { ShatterController } from './shatter/ShatterController'
 import { DEFAULT_SEPARATION, type SeparationConfig, type ShatterEvent, type ShatterUniforms } from './shatter/types'
-import { buildIgnitionCage } from './ignition/cage'
+import { buildEmbers, buildIgnitionCage } from './ignition/cage'
 import { IgnitionController } from './ignition/IgnitionController'
 import {
   makeCageMaterial,
+  makeEmberMaterial,
   makeIgnitionUniforms,
   patchSkinForIgnition,
 } from './ignition/ignitionMaterial'
@@ -67,6 +68,8 @@ export class LogoEngine {
   private ignitionUniforms: IgnitionUniforms | null = null
   private cage: THREE.LineSegments | null = null
   private cageMaterial: THREE.ShaderMaterial | null = null
+  private embers: THREE.Points | null = null
+  private emberMaterial: THREE.ShaderMaterial | null = null
   private bodySurfaceMats: THREE.Material[] = []
   private wantIgnition = false
   /** true once the seed/cue/done sequence has completed by ANY path */
@@ -202,6 +205,12 @@ export class LogoEngine {
         this.cageMaterial = makeCageMaterial(iu)
         this.cage = buildIgnitionCage(group, this.ignitionConfig, density, this.cageMaterial)
         if (this.cage) group.add(this.cage)
+
+        if (this.cage && this.ignitionConfig.EMBER_ENABLED) {
+          this.emberMaterial = makeEmberMaterial(iu)
+          this.embers = buildEmbers(this.cage, this.ignitionConfig, this.emberMaterial)
+          if (this.embers) group.add(this.embers)
+        }
 
         // Reach: furthest point the charge must travel to clear the cage. During
         // the overlay the cage is a bloomed polygon far larger than the logo, so
@@ -428,6 +437,13 @@ export class LogoEngine {
     }
     this.cageMaterial?.dispose()
     this.cageMaterial = null
+    if (this.embers) {
+      this.embers.parent?.remove(this.embers)
+      this.embers.geometry.dispose()
+      this.embers = null
+    }
+    this.emberMaterial?.dispose()
+    this.emberMaterial = null
     if (this.ignitionUniforms) {
       this.ignitionUniforms.uWakeActive.value = 0
       this.ignitionUniforms.uGlobalFade.value = 0
@@ -550,6 +566,10 @@ export class LogoEngine {
     // the light wash sweeps continuously, blast or no blast
     if (this.shatterUniforms) this.shatterUniforms.uTime.value += dt
 
+    // The cage writhes and sparks off its own clock, which must keep running
+    // through the overlay, the charge and every pulse.
+    if (this.ignitionUniforms) this.ignitionUniforms.uTime.value += dt
+
     if (this.ignition && !this.ignition.isFinished()) {
       this.ignition.update(dt)
       // Dark mass rides the cage's own fade, so the red always has something to
@@ -601,6 +621,10 @@ export class LogoEngine {
     this.cageMaterial = null
     this.cage?.geometry.dispose()
     this.cage = null
+    this.emberMaterial?.dispose()
+    this.emberMaterial = null
+    this.embers?.geometry.dispose()
+    this.embers = null
     this.scene.traverse((o) => {
       const m = o as THREE.Mesh
       if (m.isMesh) m.geometry?.dispose()

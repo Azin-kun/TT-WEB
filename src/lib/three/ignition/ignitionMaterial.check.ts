@@ -14,7 +14,12 @@ import * as THREE from 'three'
 import { DEFAULT_SEPARATION } from '../shatter/types'
 import { makeShatterUniforms, patchForShatter } from '../shatter/shatterMaterial'
 import { DEFAULT_IGNITION } from './types'
-import { makeCageMaterial, makeIgnitionUniforms, patchSkinForIgnition } from './ignitionMaterial'
+import {
+  makeCageMaterial,
+  makeEmberMaterial,
+  makeIgnitionUniforms,
+  patchSkinForIgnition,
+} from './ignitionMaterial'
 
 let failures = 0
 const check = (label: string, cond: boolean) => {
@@ -124,9 +129,46 @@ const shatterUniforms = () =>
   const src = m.vertexShader
   check('cage vertex shader has the polygon radius helper', src.includes('tt_polyR'))
   check('cage vertex shader morphs', src.includes('uMorph') && src.includes('uBloom'))
-  check('charge front measured on the morphed position', src.includes('distance(finalPos, uSeed)'))
+  // The front must be measured on the MORPHED position, never the raw attribute,
+  // or the charge would sweep where the logo will end up rather than where the
+  // cage currently is.
+  check('charge front measured on the morphed position', src.includes('tt_frontDist(finalPos'))
+  check('front distance never uses the raw attribute', !src.includes('tt_frontDist(position'))
   for (const k of ['uCentre', 'uBloom', 'uMorph', 'uSphereR', 'uBloomR', 'uPolySides'])
     check(`cage material exposes ${k}`, k in m.uniforms)
+}
+
+// --- living cage: writhe, ragged front, random flares (spec §2c) ---
+{
+  const u = makeIgnitionUniforms(DEFAULT_IGNITION, 20, new THREE.Vector3(), 10)
+  const cage = makeCageMaterial(u)
+  const ember = makeEmberMaterial(u)
+
+  check('wires writhe off a per-vertex hash', cage.vertexShader.includes('tt_hash13(position)'))
+  check('writhe is time-driven', cage.vertexShader.includes('uTime * uJitSpeed'))
+  check('front is randomly staggered per vertex', cage.vertexShader.includes('uSparkStagger'))
+  check('cage sparks independently of the front', cage.fragmentShader.includes('tt_flare(vSeed)'))
+
+  check('jitter scaled by logo radius',
+    Math.abs(u.uJitter.value - DEFAULT_IGNITION.WIRE_JITTER * 10) < 1e-9)
+  check('spark stagger scaled by logo radius',
+    Math.abs(u.uSparkStagger.value - DEFAULT_IGNITION.SPARK_STAGGER * 10) < 1e-9)
+  check('sparks start at idle level, not full', u.uSparkLevel.value === DEFAULT_IGNITION.SPARK_IDLE)
+
+  // Embers must run the SAME shape function as the wires, or they drift out of
+  // register with the cage during the bloom and morph.
+  check('embers reuse the shared shape function', ember.vertexShader.includes('tt_shaped(position, seed)'))
+  check('embers reuse the shared front distance', ember.vertexShader.includes('tt_frontDist(p, seed)'))
+  check('embers twinkle', ember.vertexShader.includes('uEmberTwinkle'))
+  check('embers gate opacity on heat', ember.fragmentShader.includes('smoothstep(0.06, 0.35, vHeat)'))
+
+  // Blending differs on purpose: wires spend most of the transition cold and
+  // must darken the paper; embers are pure light.
+  check('embers blend additively', ember.blending === THREE.AdditiveBlending)
+  check('cage does NOT blend additively', cage.blending !== THREE.AdditiveBlending)
+
+  for (const k of ['uTime', 'uJitter', 'uSparkLevel', 'uEmberSize', 'uEmberOpacity'])
+    check(`ember material exposes ${k}`, k in ember.uniforms)
 }
 
 // --- negative control: prove the composition assertions above can actually

@@ -48,6 +48,19 @@ export type IgnitionConfig = {
   // --- hold pulses (spec §2b.3) ---
   PULSE_ENABLED: boolean
   PULSE_MS: number
+  // --- living cage: writhing wires and random sparks (spec §2c) ---
+  WIRE_JITTER: number
+  WIRE_SPEED: number
+  SPARK_STAGGER: number
+  SPARK_RATE: number
+  SPARK_DENSITY: number
+  SPARK_IDLE: number
+  // --- ember particles (spec §2c) ---
+  EMBER_ENABLED: boolean
+  EMBER_DENSITY: number
+  EMBER_SIZE: number
+  EMBER_TWINKLE: number
+  EMBER_OPACITY: number
 }
 
 export const DEFAULT_IGNITION: Readonly<IgnitionConfig> = Object.freeze({
@@ -138,6 +151,44 @@ export const DEFAULT_IGNITION: Readonly<IgnitionConfig> = Object.freeze({
   PULSE_ENABLED: true,
   /** length of one charge-only pulse, and the interval between them */
   PULSE_MS: 800,
+
+  /**
+   * The cage is never still. Each vertex gets its own phase and drift axis from
+   * a hash of its own position, so the web writhes and breathes rather than
+   * translating. Endpoints that share a position hash identically, so the mesh
+   * deforms coherently instead of tearing apart.
+   *
+   * Amplitude as a fraction of the logo's radius. The reference writhes subtly —
+   * a slow breath, not a jitter.
+   */
+  WIRE_JITTER: 0.03,
+  WIRE_SPEED: 0.9,
+  /**
+   * Random per-segment offset applied to the charge front, as a fraction of the
+   * logo's radius. Without it the front is a clean expanding ring; with it the
+   * edge is broken and ragged, which is what the reference actually shows.
+   */
+  SPARK_STAGGER: 0.06,
+  /** how often a given segment flares, cycles per second */
+  SPARK_RATE: 1.6,
+  /** fraction of each cycle a segment spends flaring — effectively how many are lit at once */
+  SPARK_DENSITY: 0.08,
+  /** spark level while the cage is cold (sphere/bloom), so it is alive before it ignites */
+  SPARK_IDLE: 0.25,
+
+  /**
+   * Glowing dots at the cage's vertices — the most recognisable part of the
+   * reference after the wires themselves. They follow the same morph and the
+   * same colour ramp, and their opacity scales with local heat, so they cluster
+   * around the charge rather than covering the whole cage.
+   */
+  EMBER_ENABLED: true,
+  /** fraction of cage vertices that become embers */
+  EMBER_DENSITY: 0.22,
+  /** base point size in px, before perspective attenuation */
+  EMBER_SIZE: 3.5,
+  EMBER_TWINKLE: 2.5,
+  EMBER_OPACITY: 0.95,
 })
 
 /** Discrete transitions. The continuous progress value is pulled via getProgress(). */
@@ -172,4 +223,20 @@ export type IgnitionUniforms = {
   uSphereR: { value: number }
   uBloomR: { value: number }
   uPolySides: { value: number }
+  // --- living cage (spec §2c) ---
+  uTime: { value: number }
+  /** writhe amplitude in world units */
+  uJitter: { value: number }
+  uJitSpeed: { value: number }
+  /** per-segment random offset of the charge front, world units */
+  uSparkStagger: { value: number }
+  uSparkRate: { value: number }
+  uSparkDensity: { value: number }
+  /** 0..1 master gate on random flares — low while cold, full once charged */
+  uSparkLevel: { value: number }
+  uEmberSize: { value: number }
+  uEmberTwinkle: { value: number }
+  uEmberOpacity: { value: number }
+  /** camera distance to the logo, so EMBER_SIZE reads as pixels at that depth */
+  uPointRef: { value: number }
 }

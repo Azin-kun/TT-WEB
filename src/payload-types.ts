@@ -957,6 +957,42 @@ export interface HeroEffect {
      */
     pulseMs?: number | null;
   };
+  /**
+   * How much the cage writhes, and how it crackles
+   */
+  ignitionLife?: {
+    /**
+     * How far the wires drift, as a fraction of the logo radius
+     */
+    wireJitter?: number | null;
+    wireSpeed?: number | null;
+    /**
+     * Randomness in the charge front. 0 gives a clean, even ring.
+     */
+    sparkStagger?: number | null;
+    sparkRate?: number | null;
+    /**
+     * How many wires are lit at once. High values wash out.
+     */
+    sparkDensity?: number | null;
+    /**
+     * Sparking while the cage is still cold, over the video
+     */
+    sparkIdle?: number | null;
+  };
+  /**
+   * Glowing particles at the cage junctions
+   */
+  ignitionEmbers?: {
+    emberEnabled?: boolean | null;
+    /**
+     * Fraction of cage junctions that carry an ember
+     */
+    emberDensity?: number | null;
+    emberSize?: number | null;
+    emberTwinkle?: number | null;
+    emberOpacity?: number | null;
+  };
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -1101,6 +1137,25 @@ export interface HeroEffectsSelect<T extends boolean = true> {
     | {
         pulseEnabled?: T;
         pulseMs?: T;
+      };
+  ignitionLife?:
+    | T
+    | {
+        wireJitter?: T;
+        wireSpeed?: T;
+        sparkStagger?: T;
+        sparkRate?: T;
+        sparkDensity?: T;
+        sparkIdle?: T;
+      };
+  ignitionEmbers?:
+    | T
+    | {
+        emberEnabled?: T;
+        emberDensity?: T;
+        emberSize?: T;
+        emberTwinkle?: T;
+        emberOpacity?: T;
       };
   updatedAt?: T;
   createdAt?: T;

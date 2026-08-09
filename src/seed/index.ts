@@ -119,6 +119,21 @@ const run = async () => {
         morphStart: 0.6,
       },
       ignitionPulse: { pulseEnabled: true, pulseMs: 800 },
+      ignitionLife: {
+        wireJitter: 0.03,
+        wireSpeed: 0.9,
+        sparkStagger: 0.06,
+        sparkRate: 1.6,
+        sparkDensity: 0.08,
+        sparkIdle: 0.25,
+      },
+      ignitionEmbers: {
+        emberEnabled: true,
+        emberDensity: 0.22,
+        emberSize: 3.5,
+        emberTwinkle: 2.5,
+        emberOpacity: 0.95,
+      },
     },
   })
 
