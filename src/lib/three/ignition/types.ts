@@ -36,6 +36,18 @@ export type IgnitionConfig = {
   CORE_RADIUS: number
   DARK_MASS_OPACITY: number
   GLOW_DECAY: number
+  // --- morph cage overlay (spec §2b) ---
+  OVERLAY_ENABLED: boolean
+  OVERLAY_LEAD_MS: number
+  SPHERE_SCALE: number
+  BLOOM_SCALE: number
+  POLY_SIDES: number
+  BLOOM_START: number
+  BLOOM_END: number
+  MORPH_START: number
+  // --- hold pulses (spec §2b.3) ---
+  PULSE_ENABLED: boolean
+  PULSE_MS: number
 }
 
 export const DEFAULT_IGNITION: Readonly<IgnitionConfig> = Object.freeze({
@@ -97,6 +109,35 @@ export const DEFAULT_IGNITION: Readonly<IgnitionConfig> = Object.freeze({
   DARK_MASS_OPACITY: 0.12,
   /** exponential decay rate for residual glow during settle; higher = faster */
   GLOW_DECAY: 2.4,
+
+  /**
+   * The cage is ONE continuous object across the whole hero: it appears as a
+   * sphere over the still-extruding sketch, blooms to a polygon, morphs home
+   * into the logo's wireframe, then runs the charge and fades. Off → the
+   * ignition simply starts at the video cut, as originally built.
+   */
+  OVERLAY_ENABLED: true,
+  /** how long before the video ends the sphere appears */
+  OVERLAY_LEAD_MS: 1000,
+  /** sphere radius as a multiple of the logo's radius */
+  SPHERE_SCALE: 1.15,
+  /**
+   * Bloomed radius as a multiple of the SPHERE's radius (so ~1.96x the logo at
+   * the defaults). Measured on the reference: its cage grew 1.75x its own
+   * starting radius, median silhouette 68px -> 119px.
+   */
+  BLOOM_SCALE: 1.7,
+  /** silhouette of the bloomed shape. 8 = octagon; 6 reproduces the reference. */
+  POLY_SIDES: 8,
+  BLOOM_START: 0.15,
+  BLOOM_END: 0.6,
+  /** fraction of the overlay where the polygon starts collapsing into the logo */
+  MORPH_START: 0.6,
+
+  /** re-ignite while the logo is held and its skin is shedding */
+  PULSE_ENABLED: true,
+  /** length of one charge-only pulse, and the interval between them */
+  PULSE_MS: 800,
 })
 
 /** Discrete transitions. The continuous progress value is pulled via getProgress(). */
@@ -121,4 +162,14 @@ export type IgnitionUniforms = {
   uHot: { value: THREE.Color }
   uCrest: { value: THREE.Color }
   uCageOpacity: { value: number }
+  // --- morph cage (spec §2b.2) ---
+  /** logo-local centre the sphere and polygon are built around */
+  uCentre: { value: THREE.Vector3 }
+  /** 0 = sphere, 1 = bloomed polygon */
+  uBloom: { value: number }
+  /** 0 = shaped (sphere/polygon), 1 = true logo position */
+  uMorph: { value: number }
+  uSphereR: { value: number }
+  uBloomR: { value: number }
+  uPolySides: { value: number }
 }

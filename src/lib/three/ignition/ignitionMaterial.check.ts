@@ -14,7 +14,7 @@ import * as THREE from 'three'
 import { DEFAULT_SEPARATION } from '../shatter/types'
 import { makeShatterUniforms, patchForShatter } from '../shatter/shatterMaterial'
 import { DEFAULT_IGNITION } from './types'
-import { makeIgnitionUniforms, patchSkinForIgnition } from './ignitionMaterial'
+import { makeCageMaterial, makeIgnitionUniforms, patchSkinForIgnition } from './ignitionMaterial'
 
 let failures = 0
 const check = (label: string, cond: boolean) => {
@@ -91,6 +91,42 @@ const shatterUniforms = () =>
   const count = (h: string, n: string) => h.split(n).length - 1
   check('composed: wake alpha injected once', count(s.fragmentShader, 'diffuseColor.a *= tt_ignWake();') === 1)
   check('composed: shatter opaque hook injected once', count(s.fragmentShader, 'tt_hatchify(outgoingLight') === 1)
+}
+
+// --- morph cage geometry (spec §2b.2) ---
+{
+  const logoRadius = 10
+  const u = makeIgnitionUniforms(DEFAULT_IGNITION, 20, new THREE.Vector3(1, 2, 3), logoRadius)
+  check('sphere radius is logoRadius * SPHERE_SCALE',
+    Math.abs(u.uSphereR.value - logoRadius * DEFAULT_IGNITION.SPHERE_SCALE) < 1e-9)
+
+  // BLOOM_SCALE is a multiple of the SPHERE's size, and must land on the
+  // polygon's CORNERS. tt_polyR peaks at 1/cos(pi/N), so the stored inradius
+  // times that peak has to equal sphereR * BLOOM_SCALE exactly.
+  const corner = u.uBloomR.value / Math.cos(Math.PI / DEFAULT_IGNITION.POLY_SIDES)
+  check('bloomed corners land at sphereR * BLOOM_SCALE',
+    Math.abs(corner - u.uSphereR.value * DEFAULT_IGNITION.BLOOM_SCALE) < 1e-9)
+  check('bloomed corners are ~1.96x the logo radius',
+    Math.abs(corner / logoRadius - 1.955) < 0.01)
+
+  check('centre uniform carries the logo centre', u.uCentre.value.x === 1 && u.uCentre.value.z === 3)
+  check('polySides forwarded', u.uPolySides.value === DEFAULT_IGNITION.POLY_SIDES)
+  // Defaults must reproduce the pre-overlay behaviour exactly: cage at the
+  // logo's true shape, no bloom.
+  check('morph defaults to home (1)', u.uMorph.value === 1)
+  check('bloom defaults to sphere (0)', u.uBloom.value === 0)
+}
+
+// The cage shader must carry the morph and expose its uniforms.
+{
+  const u = makeIgnitionUniforms(DEFAULT_IGNITION, 20, new THREE.Vector3(), 10)
+  const m = makeCageMaterial(u)
+  const src = m.vertexShader
+  check('cage vertex shader has the polygon radius helper', src.includes('tt_polyR'))
+  check('cage vertex shader morphs', src.includes('uMorph') && src.includes('uBloom'))
+  check('charge front measured on the morphed position', src.includes('distance(finalPos, uSeed)'))
+  for (const k of ['uCentre', 'uBloom', 'uMorph', 'uSphereR', 'uBloomR', 'uPolySides'])
+    check(`cage material exposes ${k}`, k in m.uniforms)
 }
 
 // --- negative control: prove the composition assertions above can actually

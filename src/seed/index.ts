@@ -108,6 +108,17 @@ const run = async () => {
         darkMassOpacity: 0.12,
         glowDecay: 2.4,
       },
+      ignitionOverlay: {
+        overlayEnabled: true,
+        overlayLeadMs: 1000,
+        sphereScale: 1.15,
+        bloomScale: 1.7,
+        polySides: 8,
+        bloomStart: 0.15,
+        bloomEnd: 0.6,
+        morphStart: 0.6,
+      },
+      ignitionPulse: { pulseEnabled: true, pulseMs: 800 },
     },
   })
 

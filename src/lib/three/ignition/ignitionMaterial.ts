@@ -14,7 +14,13 @@ export function makeIgnitionUniforms(
   config: IgnitionConfig,
   logoHeight: number,
   center: THREE.Vector3,
+  logoRadius: number = logoHeight * 0.5,
 ): IgnitionUniforms {
+  const sphereR = logoRadius * config.SPHERE_SCALE
+  // BLOOM_SCALE is stated as a multiple of the sphere's DIAMETER, so make the
+  // polygon's CORNERS land exactly there. tt_polyR() returns an inradius-relative
+  // radius peaking at 1/cos(pi/N) at the corners, so pre-multiply it out.
+  const bloomR = sphereR * config.BLOOM_SCALE * Math.cos(Math.PI / config.POLY_SIDES)
   const seed = center
     .clone()
     .add(
@@ -39,15 +45,69 @@ export function makeIgnitionUniforms(
     uHot: { value: new THREE.Color(config.HOT_COLOR) },
     uCrest: { value: new THREE.Color(config.CREST_COLOR) },
     uCageOpacity: { value: config.CAGE_OPACITY },
+    uCentre: { value: center.clone() },
+    uBloom: { value: 0 },
+    // 1 = true logo shape. The bridge without an overlay starts here, which is
+    // exactly how the cage behaved before the overlay existed.
+    uMorph: { value: 1 },
+    uSphereR: { value: sphereR },
+    uBloomR: { value: bloomR },
+    uPolySides: { value: config.POLY_SIDES },
   }
 }
 
+/**
+ * The cage is one continuous object across the whole hero (spec §2b): a sphere
+ * over the extruding sketch, blooming into a polygon, then morphing home into
+ * the logo's wireframe.
+ *
+ * All three shape targets are derived from `position` and `uCentre`, so this
+ * needs NO extra vertex attributes — the sphere is just each cage vertex pushed
+ * out along its own direction from the centre. Every vertex therefore has a
+ * defined destination and the morph cannot tear.
+ */
 const CAGE_VERT = /* glsl */ `
-uniform vec3 uSeed;
+uniform vec3  uSeed;
+uniform vec3  uCentre;
+uniform float uSphereR;
+uniform float uBloomR;
+uniform float uPolySides;
+uniform float uBloom;
+uniform float uMorph;
 varying float vDist;
+
+// Radius of a regular N-gon of inradius 1 along direction d. Peaks at
+// 1/cos(pi/N) on the corners, 1 at the edge midpoints.
+float tt_polyR(vec2 d, float N) {
+  float a = atan(d.y, d.x);
+  float seg = 6.28318530718 / N;
+  float k = mod(a + seg * 0.5, seg) - seg * 0.5;
+  return 1.0 / max(0.2, cos(k));
+}
+
 void main() {
-  vDist = distance(position, uSeed);
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  vec3 finalPos = position;
+
+  // Skip the whole morph once the cage is home — the common case, since the
+  // charge and settle phases run entirely at uMorph = 1.
+  if (uMorph < 0.999) {
+    vec3 rel = position - uCentre;
+    vec3 dir = rel / max(1e-5, length(rel));
+
+    vec2 dxy = rel.xy;
+    // A vertex sitting exactly on the centre axis has no angle to speak of;
+    // pick one rather than feeding atan() a zero vector.
+    if (dot(dxy, dxy) < 1e-10) dxy = vec2(1.0, 0.0);
+
+    vec3 pSphere = uCentre + dir * uSphereR;
+    vec3 pPoly   = uCentre + dir * (uBloomR * tt_polyR(normalize(dxy), uPolySides));
+    finalPos = mix(mix(pSphere, pPoly, uBloom), position, uMorph);
+  }
+
+  // Measured on the MORPHED position, so the charge front tracks the cage where
+  // it actually is — across the bloomed polygon, not where the logo will end up.
+  vDist = distance(finalPos, uSeed);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(finalPos, 1.0);
 }
 `
 
@@ -107,6 +167,12 @@ export function makeCageMaterial(u: IgnitionUniforms): THREE.ShaderMaterial {
       uWarm: u.uWarm,
       uHot: u.uHot,
       uCrest: u.uCrest,
+      uCentre: u.uCentre,
+      uBloom: u.uBloom,
+      uMorph: u.uMorph,
+      uSphereR: u.uSphereR,
+      uBloomR: u.uBloomR,
+      uPolySides: u.uPolySides,
     },
     vertexShader: CAGE_VERT,
     fragmentShader: CAGE_FRAG,

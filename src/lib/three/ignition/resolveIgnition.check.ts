@@ -60,6 +60,26 @@ check('seedEnd never exceeds frontEnd', inverted.SEED_END <= inverted.FRONT_END)
 const lateCue = resolveIgnition({ ignitionTiming: { cueFrac: 2 } })
 check('cueFrac clamped to <= 1', lateCue.CUE_FRAC <= 1)
 
+// --- morph cage / overlay (spec §2b) ---
+const badBloom = resolveIgnition({ ignitionOverlay: { bloomStart: 0.8, bloomEnd: 0.2 } })
+check('bloomStart never exceeds bloomEnd', badBloom.BLOOM_START <= badBloom.BLOOM_END)
+const lateMorph = resolveIgnition({ ignitionOverlay: { morphStart: 5 } })
+check('morphStart clamped to <= 1', lateMorph.MORPH_START <= 1)
+// A polygon needs at least 3 sides; below that the radius function degenerates
+// and the cage would collapse to a line.
+const fewSides = resolveIgnition({ ignitionOverlay: { polySides: 1 } })
+check('polySides clamped to >= 3', fewSides.POLY_SIDES >= 3)
+check('overlay defaults enabled', resolveIgnition({}).OVERLAY_ENABLED === true)
+check('pulse defaults enabled', resolveIgnition({}).PULSE_ENABLED === true)
+check(
+  'overlay disable applies',
+  resolveIgnition({ ignitionOverlay: { overlayEnabled: false } }).OVERLAY_ENABLED === false,
+)
+check(
+  'pulse disable applies',
+  resolveIgnition({ ignitionPulse: { pulseEnabled: false } }).PULSE_ENABLED === false,
+)
+
 // round trip: config -> CMS shape -> config is lossless.
 // Perturb EVERY CMS-mapped field to a distinct non-default value first — the
 // separation equivalent originally round-tripped defaults against themselves,
@@ -88,6 +108,16 @@ const PERTURBED: typeof DEFAULT_IGNITION = {
   CORE_RADIUS: 0.4,
   DARK_MASS_OPACITY: 0.3,
   GLOW_DECAY: 1.5,
+  OVERLAY_ENABLED: false,
+  OVERLAY_LEAD_MS: 1400,
+  SPHERE_SCALE: 1.35,
+  BLOOM_SCALE: 2.1,
+  POLY_SIDES: 6,
+  BLOOM_START: 0.25,
+  BLOOM_END: 0.7,
+  MORPH_START: 0.75,
+  PULSE_ENABLED: false,
+  PULSE_MS: 1200,
 }
 
 const round = resolveIgnition(toIgnitionPayload(PERTURBED))

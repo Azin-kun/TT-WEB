@@ -916,6 +916,47 @@ export interface HeroEffect {
     darkMassOpacity?: number | null;
     glowDecay?: number | null;
   };
+  /**
+   * The cage appears over the still-drawing sketch video as a sphere, blooms outward into a polygon, then collapses into the logo shape.
+   */
+  ignitionOverlay?: {
+    /**
+     * Turning this off starts the transition at the video cut instead, with no sphere beforehand.
+     */
+    overlayEnabled?: boolean | null;
+    /**
+     * How long before the video ends the sphere appears
+     */
+    overlayLeadMs?: number | null;
+    /**
+     * Sphere size as a multiple of the logo
+     */
+    sphereScale?: number | null;
+    /**
+     * How far it blooms, as a multiple of the SPHERE's size — not the logo's. At the defaults the bloomed shape is about twice the logo.
+     */
+    bloomScale?: number | null;
+    /**
+     * Shape it blooms into. 8 is an octagon, 6 a hexagon.
+     */
+    polySides?: number | null;
+    bloomStart?: number | null;
+    bloomEnd?: number | null;
+    /**
+     * When the bloomed shape starts collapsing into the logo
+     */
+    morphStart?: number | null;
+  };
+  /**
+   * Re-ignites while a visitor holds the logo and its skin peels away
+   */
+  ignitionPulse?: {
+    pulseEnabled?: boolean | null;
+    /**
+     * Length of one pulse, and the gap before the next
+     */
+    pulseMs?: number | null;
+  };
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -1042,6 +1083,24 @@ export interface HeroEffectsSelect<T extends boolean = true> {
         crestColor?: T;
         darkMassOpacity?: T;
         glowDecay?: T;
+      };
+  ignitionOverlay?:
+    | T
+    | {
+        overlayEnabled?: T;
+        overlayLeadMs?: T;
+        sphereScale?: T;
+        bloomScale?: T;
+        polySides?: T;
+        bloomStart?: T;
+        bloomEnd?: T;
+        morphStart?: T;
+      };
+  ignitionPulse?:
+    | T
+    | {
+        pulseEnabled?: T;
+        pulseMs?: T;
       };
   updatedAt?: T;
   createdAt?: T;

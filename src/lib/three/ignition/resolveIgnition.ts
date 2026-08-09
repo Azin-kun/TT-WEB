@@ -37,6 +37,20 @@ export type HeroEffectsIgnitionInput = {
     darkMassOpacity?: number | null
     glowDecay?: number | null
   } | null
+  ignitionOverlay?: {
+    overlayEnabled?: boolean | null
+    overlayLeadMs?: number | null
+    sphereScale?: number | null
+    bloomScale?: number | null
+    polySides?: number | null
+    bloomStart?: number | null
+    bloomEnd?: number | null
+    morphStart?: number | null
+  } | null
+  ignitionPulse?: {
+    pulseEnabled?: boolean | null
+    pulseMs?: number | null
+  } | null
 }
 
 const HEX = /^#[0-9a-fA-F]{6}$/
@@ -61,6 +75,17 @@ export function resolveIgnition(cms: HeroEffectsIgnitionInput | null | undefined
   const s = cms?.ignitionShape ?? {}
   const g = cms?.ignitionCage ?? {}
   const c = cms?.ignitionColor ?? {}
+  const o = cms?.ignitionOverlay ?? {}
+  const p = cms?.ignitionPulse ?? {}
+
+  // Overlay phase boundaries obey the same rule as the ignition's own: ordered
+  // and inside 0..1, enforced here because the REST API bypasses the admin UI.
+  const bloomStart = clamp01(num(o.bloomStart, d.BLOOM_START))
+  const bloomEnd = Math.max(bloomStart, clamp01(num(o.bloomEnd, d.BLOOM_END)))
+  const morphStart = clamp01(num(o.morphStart, d.MORPH_START))
+  // Below 3 sides the polygon radius function degenerates and the cage would
+  // collapse to a line.
+  const polySides = Math.max(3, Math.round(num(o.polySides, d.POLY_SIDES)))
 
   // Phase boundaries must stay ordered and inside 0..1. Payload's min/max
   // guards the admin UI, but the REST API can be written to directly.
@@ -91,6 +116,17 @@ export function resolveIgnition(cms: HeroEffectsIgnitionInput | null | undefined
     CORE_RADIUS: num(s.coreRadius, d.CORE_RADIUS),
     DARK_MASS_OPACITY: num(c.darkMassOpacity, d.DARK_MASS_OPACITY),
     GLOW_DECAY: num(c.glowDecay, d.GLOW_DECAY),
+    OVERLAY_ENABLED:
+      typeof o.overlayEnabled === 'boolean' ? o.overlayEnabled : d.OVERLAY_ENABLED,
+    OVERLAY_LEAD_MS: num(o.overlayLeadMs, d.OVERLAY_LEAD_MS),
+    SPHERE_SCALE: num(o.sphereScale, d.SPHERE_SCALE),
+    BLOOM_SCALE: num(o.bloomScale, d.BLOOM_SCALE),
+    POLY_SIDES: polySides,
+    BLOOM_START: bloomStart,
+    BLOOM_END: bloomEnd,
+    MORPH_START: morphStart,
+    PULSE_ENABLED: typeof p.pulseEnabled === 'boolean' ? p.pulseEnabled : d.PULSE_ENABLED,
+    PULSE_MS: num(p.pulseMs, d.PULSE_MS),
   }
 }
 
@@ -126,6 +162,20 @@ export function toIgnitionPayload(c: IgnitionConfig): HeroEffectsIgnitionInput {
       crestColor: intToHex(c.CREST_COLOR),
       darkMassOpacity: c.DARK_MASS_OPACITY,
       glowDecay: c.GLOW_DECAY,
+    },
+    ignitionOverlay: {
+      overlayEnabled: c.OVERLAY_ENABLED,
+      overlayLeadMs: c.OVERLAY_LEAD_MS,
+      sphereScale: c.SPHERE_SCALE,
+      bloomScale: c.BLOOM_SCALE,
+      polySides: c.POLY_SIDES,
+      bloomStart: c.BLOOM_START,
+      bloomEnd: c.BLOOM_END,
+      morphStart: c.MORPH_START,
+    },
+    ignitionPulse: {
+      pulseEnabled: c.PULSE_ENABLED,
+      pulseMs: c.PULSE_MS,
     },
   }
 }

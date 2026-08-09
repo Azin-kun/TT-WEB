@@ -326,5 +326,87 @@ export const HeroEffects: GlobalConfig = {
         { name: 'glowDecay', type: 'number', defaultValue: 2.4, min: 0.2, max: 8 },
       ],
     },
+    {
+      name: 'ignitionOverlay',
+      type: 'group',
+      label: 'Ignition — cage overlay',
+      admin: {
+        description:
+          'The cage appears over the still-drawing sketch video as a sphere, blooms outward into a polygon, then collapses into the logo shape.',
+      },
+      fields: [
+        {
+          name: 'overlayEnabled',
+          type: 'checkbox',
+          defaultValue: true,
+          admin: {
+            description:
+              'Turning this off starts the transition at the video cut instead, with no sphere beforehand.',
+          },
+        },
+        {
+          name: 'overlayLeadMs',
+          type: 'number',
+          defaultValue: 1000,
+          min: 200,
+          max: 4000,
+          admin: { description: 'How long before the video ends the sphere appears' },
+        },
+        {
+          name: 'sphereScale',
+          type: 'number',
+          defaultValue: 1.15,
+          min: 1,
+          max: 3,
+          admin: { description: 'Sphere size as a multiple of the logo' },
+        },
+        {
+          name: 'bloomScale',
+          type: 'number',
+          defaultValue: 1.7,
+          min: 1,
+          max: 4,
+          admin: {
+            description:
+              "How far it blooms, as a multiple of the SPHERE's size — not the logo's. At the defaults the bloomed shape is about twice the logo.",
+          },
+        },
+        {
+          name: 'polySides',
+          type: 'number',
+          defaultValue: 8,
+          min: 3,
+          max: 16,
+          admin: { description: 'Shape it blooms into. 8 is an octagon, 6 a hexagon.' },
+        },
+        { name: 'bloomStart', type: 'number', defaultValue: 0.15, min: 0, max: 1 },
+        { name: 'bloomEnd', type: 'number', defaultValue: 0.6, min: 0, max: 1 },
+        {
+          name: 'morphStart',
+          type: 'number',
+          defaultValue: 0.6,
+          min: 0,
+          max: 1,
+          admin: { description: 'When the bloomed shape starts collapsing into the logo' },
+        },
+      ],
+    },
+    {
+      name: 'ignitionPulse',
+      type: 'group',
+      label: 'Ignition — hold pulses',
+      admin: { description: 'Re-ignites while a visitor holds the logo and its skin peels away' },
+      fields: [
+        { name: 'pulseEnabled', type: 'checkbox', defaultValue: true },
+        {
+          name: 'pulseMs',
+          type: 'number',
+          defaultValue: 800,
+          min: 200,
+          max: 3000,
+          admin: { description: 'Length of one pulse, and the gap before the next' },
+        },
+      ],
+    },
   ],
 }

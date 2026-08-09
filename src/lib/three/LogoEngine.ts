@@ -173,7 +173,22 @@ export class LogoEngine {
         const centre = localBox.getCenter(new THREE.Vector3())
         const logoHeight = heightFrac * visH
 
-        const iu = makeIgnitionUniforms(this.ignitionConfig, logoHeight, centre)
+        const corners: THREE.Vector3[] = []
+        for (let i = 0; i < 8; i++) {
+          corners.push(
+            new THREE.Vector3(
+              i & 1 ? localBox.max.x : localBox.min.x,
+              i & 2 ? localBox.max.y : localBox.min.y,
+              i & 4 ? localBox.max.z : localBox.min.z,
+            ),
+          )
+        }
+        // The sphere is sized off the logo's own radius, so SPHERE_SCALE reads
+        // as "this much bigger than the mark" regardless of viewport.
+        const logoRadius =
+          Math.max(...corners.map((c) => c.distanceTo(centre))) || logoHeight * 0.5
+
+        const iu = makeIgnitionUniforms(this.ignitionConfig, logoHeight, centre, logoRadius)
         this.ignitionUniforms = iu
 
         // AFTER patchForShatter, and composing rather than assigning — three
@@ -188,17 +203,13 @@ export class LogoEngine {
         this.cage = buildIgnitionCage(group, this.ignitionConfig, density, this.cageMaterial)
         if (this.cage) group.add(this.cage)
 
-        // Reach: furthest bounding-box corner from the seed, so the front is
-        // guaranteed to clear the geometry by FRONT_END wherever the seed sits.
+        // Reach: furthest point the charge must travel to clear the cage. During
+        // the overlay the cage is a bloomed polygon far larger than the logo, so
+        // the bloomed extent — not the logo's — is what the front has to cross.
         const seed = iu.uSeed.value
-        let reach = 0
-        for (let i = 0; i < 8; i++) {
-          const corner = new THREE.Vector3(
-            i & 1 ? localBox.max.x : localBox.min.x,
-            i & 2 ? localBox.max.y : localBox.min.y,
-            i & 4 ? localBox.max.z : localBox.min.z,
-          )
-          reach = Math.max(reach, corner.distanceTo(seed))
+        let reach = Math.max(...corners.map((c) => c.distanceTo(seed)))
+        if (this.ignitionConfig.OVERLAY_ENABLED) {
+          reach = Math.max(reach, iu.uSphereR.value * this.ignitionConfig.BLOOM_SCALE)
         }
         if (!(reach > 0)) reach = logoHeight
 
