@@ -61,9 +61,18 @@ morph itself rather than by fading out a second object.
 measurement whose window was clamped on two sides, so it tracked only the right edge. The cage does bloom.
 The owner identified this from the video before the measurement confirmed it.
 
-**Owner decisions:** ours blooms to an **octagon**, not a hexagon. Sphere starts at **1.15× the logo**, and
-blooms to **1.7× the sphere's own diameter** (≈1.96× the logo). Sphere appears **1 s before the video ends**.
-All three are CMS fields.
+**Owner decisions:** ours blooms to an **octagon**, not a hexagon. Sphere appears **1 s before the video
+ends**. All of it is CMS-editable.
+
+**Sizing, reparameterised 2026-08-09 after the owner tuned on the bench.** Originally `SPHERE_SCALE` was
+measured against the logo but `BLOOM_SCALE` against the *sphere*, so the cage's total size was the product of
+two sliders — you had to do arithmetic to hit a target. The owner asked for "the cage total diameter is 1.1
+times larger than the logo", which is a question the old parameterisation could not answer directly.
+
+**Both scales are now measured against the logo.** `BLOOM_SCALE` is the cage's **total** extent, corner to
+corner, so the number set *is* the final size. Defaults: sphere starts at **1.0× the logo** and blooms to
+**1.1×**. `resolveIgnition` raises a bloom below the sphere up to it, since with a shared reference a smaller
+bloom would make the cage *shrink* on "bloom".
 
 ### 2b.2 The sphere costs no extra geometry
 
@@ -323,8 +332,8 @@ All range-clamped in CMS, following the separation global's pattern. Not localiz
 |---|---|---|
 | `OVERLAY_ENABLED` | `true` | Off → ignition starts at the video cut, as originally built |
 | `OVERLAY_LEAD_MS` | `1000` | How long before the video ends the sphere appears |
-| `SPHERE_SCALE` | `1.15` | Sphere radius as a multiple of the logo's radius |
-| `BLOOM_SCALE` | `1.7` | Bloomed radius as a multiple of the **sphere's** radius (≈1.96× the logo) |
+| `SPHERE_SCALE` | `1.0` | Starting sphere radius as a multiple of the **logo's** radius |
+| `BLOOM_SCALE` | `1.1` | The cage's **total** bloomed extent, corner to corner, as a multiple of the **logo's** radius. Clamped up to `SPHERE_SCALE` if set below it |
 | `POLY_SIDES` | `8` | Silhouette of the bloomed shape. 8 = octagon; 6 reproduces the reference |
 | `BLOOM_START` | `0.15` | Fraction of the overlay where the bloom begins |
 | `BLOOM_END` | `0.60` | Fraction where the bloom completes |

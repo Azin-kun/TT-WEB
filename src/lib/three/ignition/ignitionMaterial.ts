@@ -18,10 +18,10 @@ export function makeIgnitionUniforms(
   logoRadius: number = logoHeight * 0.5,
 ): IgnitionUniforms {
   const sphereR = logoRadius * config.SPHERE_SCALE
-  // BLOOM_SCALE is stated as a multiple of the sphere's DIAMETER, so make the
-  // polygon's CORNERS land exactly there. tt_polyR() returns an inradius-relative
+  // BLOOM_SCALE is the cage's TOTAL extent against the LOGO, so the polygon's
+  // CORNERS must land exactly there. tt_polyR() returns an inradius-relative
   // radius peaking at 1/cos(pi/N) at the corners, so pre-multiply it out.
-  const bloomR = sphereR * config.BLOOM_SCALE * Math.cos(Math.PI / config.POLY_SIDES)
+  const bloomR = logoRadius * config.BLOOM_SCALE * Math.cos(Math.PI / config.POLY_SIDES)
   const seed = center
     .clone()
     .add(

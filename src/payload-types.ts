@@ -929,11 +929,11 @@ export interface HeroEffect {
      */
     overlayLeadMs?: number | null;
     /**
-     * Sphere size as a multiple of the logo
+     * Starting sphere size, as a multiple of the logo
      */
     sphereScale?: number | null;
     /**
-     * How far it blooms, as a multiple of the SPHERE's size — not the logo's. At the defaults the bloomed shape is about twice the logo.
+     * The cage's TOTAL size when fully bloomed, as a multiple of the logo — measured corner to corner. Both this and the sphere are measured against the logo, so this number IS the final size rather than a multiplier on the sphere. Anything below the sphere size is raised to it.
      */
     bloomScale?: number | null;
     /**

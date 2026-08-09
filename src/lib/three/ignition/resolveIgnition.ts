@@ -104,6 +104,11 @@ export function resolveIgnition(cms: HeroEffectsIgnitionInput | null | undefined
   // collapse to a line.
   const polySides = Math.max(3, Math.round(num(o.polySides, d.POLY_SIDES)))
 
+  // Both scales are measured against the logo, so a bloom below the sphere
+  // would make the cage SHRINK on "bloom". Clamp rather than let that ship.
+  const sphereScale = num(o.sphereScale, d.SPHERE_SCALE)
+  const bloomScale = Math.max(sphereScale, num(o.bloomScale, d.BLOOM_SCALE))
+
   // Phase boundaries must stay ordered and inside 0..1. Payload's min/max
   // guards the admin UI, but the REST API can be written to directly.
   const seedEnd = clamp01(num(t.seedEnd, d.SEED_END))
@@ -136,8 +141,8 @@ export function resolveIgnition(cms: HeroEffectsIgnitionInput | null | undefined
     OVERLAY_ENABLED:
       typeof o.overlayEnabled === 'boolean' ? o.overlayEnabled : d.OVERLAY_ENABLED,
     OVERLAY_LEAD_MS: num(o.overlayLeadMs, d.OVERLAY_LEAD_MS),
-    SPHERE_SCALE: num(o.sphereScale, d.SPHERE_SCALE),
-    BLOOM_SCALE: num(o.bloomScale, d.BLOOM_SCALE),
+    SPHERE_SCALE: sphereScale,
+    BLOOM_SCALE: bloomScale,
     POLY_SIDES: polySides,
     BLOOM_START: bloomStart,
     BLOOM_END: bloomEnd,

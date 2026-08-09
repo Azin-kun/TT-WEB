@@ -105,14 +105,18 @@ const shatterUniforms = () =>
   check('sphere radius is logoRadius * SPHERE_SCALE',
     Math.abs(u.uSphereR.value - logoRadius * DEFAULT_IGNITION.SPHERE_SCALE) < 1e-9)
 
-  // BLOOM_SCALE is a multiple of the SPHERE's size, and must land on the
-  // polygon's CORNERS. tt_polyR peaks at 1/cos(pi/N), so the stored inradius
-  // times that peak has to equal sphereR * BLOOM_SCALE exactly.
+  // BLOOM_SCALE is the cage's TOTAL extent against the LOGO, and must land on
+  // the polygon's CORNERS. tt_polyR peaks at 1/cos(pi/N), so the stored inradius
+  // times that peak has to equal logoRadius * BLOOM_SCALE exactly.
   const corner = u.uBloomR.value / Math.cos(Math.PI / DEFAULT_IGNITION.POLY_SIDES)
-  check('bloomed corners land at sphereR * BLOOM_SCALE',
-    Math.abs(corner - u.uSphereR.value * DEFAULT_IGNITION.BLOOM_SCALE) < 1e-9)
-  check('bloomed corners are ~1.96x the logo radius',
-    Math.abs(corner / logoRadius - 1.955) < 0.01)
+  check('bloomed corners land at logoRadius * BLOOM_SCALE',
+    Math.abs(corner - logoRadius * DEFAULT_IGNITION.BLOOM_SCALE) < 1e-9)
+  // The whole point of the owner's reparameterisation: the slider value IS the
+  // total, not a factor to be multiplied by the sphere.
+  check('total extent equals the BLOOM_SCALE slider exactly',
+    Math.abs(corner / logoRadius - DEFAULT_IGNITION.BLOOM_SCALE) < 1e-9)
+  check('cage never starts larger than it ends',
+    u.uSphereR.value <= corner + 1e-9)
 
   check('centre uniform carries the logo centre', u.uCentre.value.x === 1 && u.uCentre.value.z === 3)
   check('polySides forwarded', u.uPolySides.value === DEFAULT_IGNITION.POLY_SIDES)

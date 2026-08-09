@@ -52,8 +52,8 @@ const GROUPS: { title: string; rows: Row[] }[] = [
     title: 'overlay cage',
     rows: [
       { key: 'OVERLAY_LEAD_MS', label: 'Lead before end (ms)', min: 200, max: 4000, step: 50 },
-      { key: 'SPHERE_SCALE', label: 'Sphere × logo', min: 1, max: 3, step: 0.05 },
-      { key: 'BLOOM_SCALE', label: 'Bloom × sphere', min: 1, max: 3, step: 0.05 },
+      { key: 'SPHERE_SCALE', label: 'Sphere start × logo', min: 1, max: 3, step: 0.05 },
+      { key: 'BLOOM_SCALE', label: 'Total bloomed × logo', min: 1, max: 3, step: 0.05 },
       { key: 'POLY_SIDES', label: 'Sides (8 = octagon)', min: 3, max: 16, step: 1 },
       { key: 'BLOOM_START', label: 'Bloom starts', min: 0, max: 1, step: 0.01 },
       { key: 'BLOOM_END', label: 'Bloom ends', min: 0, max: 1, step: 0.01 },

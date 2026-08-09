@@ -355,20 +355,20 @@ export const HeroEffects: GlobalConfig = {
         {
           name: 'sphereScale',
           type: 'number',
-          defaultValue: 1.15,
+          defaultValue: 1,
           min: 1,
           max: 3,
-          admin: { description: 'Sphere size as a multiple of the logo' },
+          admin: { description: 'Starting sphere size, as a multiple of the logo' },
         },
         {
           name: 'bloomScale',
           type: 'number',
-          defaultValue: 1.7,
+          defaultValue: 1.1,
           min: 1,
           max: 4,
           admin: {
             description:
-              "How far it blooms, as a multiple of the SPHERE's size — not the logo's. At the defaults the bloomed shape is about twice the logo.",
+              "The cage's TOTAL size when fully bloomed, as a multiple of the logo — measured corner to corner. Both this and the sphere are measured against the logo, so this number IS the final size rather than a multiplier on the sphere. Anything below the sphere size is raised to it.",
           },
         },
         {

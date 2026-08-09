@@ -69,6 +69,10 @@ check('morphStart clamped to <= 1', lateMorph.MORPH_START <= 1)
 // and the cage would collapse to a line.
 const fewSides = resolveIgnition({ ignitionOverlay: { polySides: 1 } })
 check('polySides clamped to >= 3', fewSides.POLY_SIDES >= 3)
+// Both scales are measured against the logo, so a bloom below the sphere would
+// make the cage shrink on "bloom" rather than grow.
+const shrinking = resolveIgnition({ ignitionOverlay: { sphereScale: 1.4, bloomScale: 1.1 } })
+check('bloom never ends smaller than the sphere starts', shrinking.BLOOM_SCALE >= shrinking.SPHERE_SCALE)
 check('overlay defaults enabled', resolveIgnition({}).OVERLAY_ENABLED === true)
 check('pulse defaults enabled', resolveIgnition({}).PULSE_ENABLED === true)
 check(

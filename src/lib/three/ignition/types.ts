@@ -132,14 +132,18 @@ export const DEFAULT_IGNITION: Readonly<IgnitionConfig> = Object.freeze({
   OVERLAY_ENABLED: true,
   /** how long before the video ends the sphere appears */
   OVERLAY_LEAD_MS: 1000,
-  /** sphere radius as a multiple of the logo's radius */
-  SPHERE_SCALE: 1.15,
+  /** starting sphere radius as a multiple of the logo's radius */
+  SPHERE_SCALE: 1,
   /**
-   * Bloomed radius as a multiple of the SPHERE's radius (so ~1.96x the logo at
-   * the defaults). Measured on the reference: its cage grew 1.75x its own
-   * starting radius, median silhouette 68px -> 119px.
+   * The cage's TOTAL extent when fully bloomed, as a multiple of the logo's
+   * radius — measured corner to corner, so this is literally "how much bigger
+   * than the mark does the cage ever get".
+   *
+   * Owner 2026-08-09: expressed against the LOGO, not against the sphere. Both
+   * scales now share one reference, so the total is the number you set instead
+   * of the product of two sliders.
    */
-  BLOOM_SCALE: 1.7,
+  BLOOM_SCALE: 1.1,
   /** silhouette of the bloomed shape. 8 = octagon; 6 reproduces the reference. */
   POLY_SIDES: 8,
   BLOOM_START: 0.15,

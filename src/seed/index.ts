@@ -111,8 +111,8 @@ const run = async () => {
       ignitionOverlay: {
         overlayEnabled: true,
         overlayLeadMs: 1000,
-        sphereScale: 1.15,
-        bloomScale: 1.7,
+        sphereScale: 1,
+        bloomScale: 1.1,
         polySides: 8,
         bloomStart: 0.15,
         bloomEnd: 0.6,
