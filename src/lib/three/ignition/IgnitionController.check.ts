@@ -190,6 +190,112 @@ const make = (cfg: IgnitionConfig = DEFAULT_IGNITION, reach = 1) => {
   check('a throwing listener does not break the sequence', !threw && seen.includes('done'))
 }
 
+// --- overlay phase: sphere -> bloom -> morph home (spec §2b) ---
+
+/** advance the controller by `ms` in 16ms steps */
+const advance = (c: IgnitionController, ms: number) => {
+  for (let t = 0; t < ms; t += 16) c.update(0.016)
+}
+
+// Without startOverlay(), behaviour is exactly what it was before the overlay
+// existed: cage already at the logo's true shape, no bloom.
+{
+  const { c, u, events } = make()
+  c.start()
+  advance(c, 300)
+  check('no overlay -> morph stays home', u.uMorph.value === 1)
+  check('no overlay -> no bloom', u.uBloom.value === 0)
+  check('no overlay -> normal events', events[0] === 'seed')
+}
+
+// The overlay itself emits nothing: seed/cue/done belong to the one-shot
+// bridge, and armed / onLive hang off them.
+{
+  const { c, events } = make()
+  c.startOverlay()
+  advance(c, 900)
+  check('overlay emits no events', events.length === 0)
+  check('overlay does not report finished', !c.isFinished())
+}
+
+// Shape timeline across the overlay.
+{
+  const { c, u } = make()
+  c.startOverlay()
+  check('overlay starts as a sphere', u.uBloom.value === 0 && u.uMorph.value === 0)
+  check('cage is visible during the overlay', u.uGlobalFade.value === 1)
+  check('no surface materialization during the overlay', u.uWakeActive.value === 0)
+
+  advance(c, 100) // q ~= 0.10, before BLOOM_START 0.15
+  check('no bloom before BLOOM_START', u.uBloom.value === 0)
+
+  advance(c, 300) // q ~= 0.40, mid-bloom
+  const midBloom = u.uBloom.value
+  check('bloom in progress mid-way', midBloom > 0 && midBloom < 1)
+  check('morph still home-less before MORPH_START', u.uMorph.value === 0)
+
+  advance(c, 300) // q ~= 0.70, past BLOOM_END 0.60 and into the morph
+  check('bloom complete by BLOOM_END', u.uBloom.value === 1)
+  const midMorph = u.uMorph.value
+  check('morph in progress after MORPH_START', midMorph > 0 && midMorph < 1)
+
+  advance(c, 400) // q = 1
+  check('morph completes by the end of the overlay', u.uMorph.value === 1)
+}
+
+// Bloom and morph never travel backwards.
+{
+  const { c, u } = make()
+  c.startOverlay()
+  let pb = -1, pm = -1, mono = true
+  for (let t = 0; t < 1200; t += 16) {
+    c.update(0.016)
+    if (u.uBloom.value < pb - 1e-9 || u.uMorph.value < pm - 1e-9) mono = false
+    pb = u.uBloom.value
+    pm = u.uMorph.value
+  }
+  check('bloom and morph are monotonic', mono)
+}
+
+// The video ending early must still finish the morph — the overlay clock and
+// the real video WILL drift, and a half-morphed cage under a finished video is
+// the one thing this must never leave behind.
+{
+  const { c, u, events } = make()
+  c.startOverlay()
+  advance(c, 700) // interrupted mid-morph
+  check('morph genuinely incomplete at interruption', u.uMorph.value > 0 && u.uMorph.value < 1)
+  c.start()
+  check('start does not pop the morph instantly', u.uMorph.value < 1)
+  advance(c, DEFAULT_IGNITION.IGNITION_MS * DEFAULT_IGNITION.SEED_END + 40)
+  check('morph completes across the seed phase', u.uMorph.value === 1)
+  advance(c, 2200)
+  check('interrupted overlay still ends with done', events.filter((e) => e === 'done').length === 1)
+}
+
+// Ordering guards.
+{
+  const { c, u } = make()
+  c.startOverlay()
+  c.startOverlay()
+  advance(c, 500)
+  const once = u.uBloom.value
+  c.startOverlay()
+  check('startOverlay is idempotent', u.uBloom.value === once)
+}
+{
+  const { c, u } = make()
+  c.start()
+  advance(c, 100)
+  c.startOverlay()
+  check('startOverlay after start is ignored', u.uMorph.value === 1)
+}
+{
+  const { c, u } = make()
+  c.finishNow()
+  check('finishNow leaves the cage morphed home', u.uMorph.value === 1)
+}
+
 console.log(
   failures === 0 ? '\nAll ignition controller checks passed.' : `\n${failures} check(s) FAILED.`,
 )

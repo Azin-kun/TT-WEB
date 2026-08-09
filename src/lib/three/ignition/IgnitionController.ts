@@ -16,12 +16,23 @@ import {
  * the floating-words entrance both hang off it, so a path that fails to emit it
  * leaves the hero permanently inert with no console error.
  */
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v))
+const smoothstep = (a: number, b: number, x: number) => {
+  const t = clamp01((x - a) / Math.max(1e-6, b - a))
+  return t * t * (3 - 2 * t)
+}
+
 export class IgnitionController {
   private t = 0
   private started = false
   private finished = false
   private cued = false
   private listeners = new Set<(e: IgnitionEvent) => void>()
+
+  // overlay phase — the cage exists as a sphere over the still-playing video,
+  // blooms to a polygon, then morphs home into the logo (spec §2b)
+  private overlayStarted = false
+  private overlayT = 0
 
   /**
    * @param reach max distance from the seed to any point of the logo, so the
@@ -46,6 +57,25 @@ export class IgnitionController {
 
   isFinished(): boolean {
     return this.finished
+  }
+
+  /**
+   * Bring the cage up as a sphere over the still-playing sketch video.
+   *
+   * Emits nothing: seed / cue / done belong to the one-shot bridge, and both
+   * separation arming and the floating-words entrance hang off them. An overlay
+   * that emitted would arm the logo while the video is still running.
+   */
+  startOverlay() {
+    if (this.overlayStarted || this.started || this.finished) return
+    this.overlayStarted = true
+    this.overlayT = 0
+    this.u.uGlobalFade.value = 1
+    this.u.uWakeActive.value = 0
+    this.u.uCoreLive.value = 0
+    this.u.uFront.value = 0
+    this.u.uBloom.value = 0
+    this.u.uMorph.value = 0
   }
 
   start() {
@@ -79,11 +109,24 @@ export class IgnitionController {
     this.u.uWakeActive.value = 0
     this.u.uCoreLive.value = 0
     this.u.uFront.value = this.reach * 2
+    // However we got here, the cage ends at the logo's true shape — a forced
+    // finish must never leave it stranded as a sphere.
+    this.u.uMorph.value = 1
     this.emit('done')
   }
 
   update(dt: number) {
-    if (!this.started || this.finished) return
+    if (this.finished) return
+
+    // Overlay runs on its own clock until the video actually ends and start()
+    // takes over.
+    if (!this.started) {
+      if (!this.overlayStarted) return
+      this.overlayT += dt * 1000
+      this.applyOverlay(clamp01(this.overlayT / Math.max(1, this.config.OVERLAY_LEAD_MS)))
+      return
+    }
+
     this.t += dt * 1000
     const p = this.getProgress()
 
@@ -99,8 +142,23 @@ export class IgnitionController {
     this.apply(p)
   }
 
+  /** @param q 0..1 through OVERLAY_LEAD_MS */
+  private applyOverlay(q: number) {
+    const { BLOOM_START, BLOOM_END, MORPH_START } = this.config
+    this.u.uGlobalFade.value = 1
+    this.u.uBloom.value = smoothstep(BLOOM_START, BLOOM_END, q)
+    this.u.uMorph.value = smoothstep(MORPH_START, 1, q)
+  }
+
   private apply(p: number) {
     const { SEED_END, FRONT_END, GLOW_DECAY } = this.config
+
+    // If the video ended before the overlay finished morphing — the two clocks
+    // drift, and the video's duration is not frame-exact — complete the morph
+    // across the seed phase instead of popping it. Monotonic, so an overlay
+    // that already finished is never dragged backwards.
+    const catchUp = SEED_END > 0 ? Math.min(1, p / SEED_END) : 1
+    this.u.uMorph.value = Math.max(this.u.uMorph.value, catchUp)
 
     // Front travel spans SEED_END..FRONT_END. Overshoot past `reach` so the
     // crest fully leaves the far side rather than parking on it.
