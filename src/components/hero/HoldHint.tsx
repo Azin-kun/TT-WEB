@@ -27,10 +27,18 @@ const HINT_HIDE_MS = 200
 /** Pop-in duration. */
 const HINT_POP_MS = 260
 /** Rendered width in px; the art is 804x660, so height follows at ~0.82x. */
-const HINT_W = 119
+const HINT_W = 98
 const HINT_ASPECT = 660 / 804
-/** Clearance between the bubble's bottom edge and the cursor's arrow tip. */
-const HINT_GAP = 8
+/**
+ * Where the speech tail's point sits inside the artwork, as fractions of its
+ * box. Measured off the source PNG: the white tail spike tips at about
+ * (250, 537) of 804x660 — NOT the bubble's centre, and not its bottom edge.
+ * Anchoring here is what puts the tail on the cursor instead of near it.
+ */
+const TAIL_X = 0.31
+const TAIL_Y = 0.81
+/** Clearance between the tail's point and the cursor's arrow tip. */
+const HINT_GAP = 2
 const HINT_SRC = '/media/hint-click-hold.webp'
 
 /**
@@ -41,14 +49,16 @@ const HINT_SRC = '/media/hint-click-hold.webp'
 let hasHeldThisVisit = false
 
 /**
- * Sits directly ON TOP of the cursor's arrow tip: centred horizontally on it,
- * with the bubble's bottom edge a hair above it (owner 2026-08-10).
+ * Places the speech TAIL's point just above the cursor's arrow tip, rather than
+ * centring the whole bubble on it (owner 2026-08-10). The tail sits left of
+ * centre and well above the bottom edge, so anchoring to it shifts the bubble
+ * right and down compared with centring.
  *
- * clientX/clientY IS the arrow tip in every browser — the hotspot of the default
- * pointer is its point, not its centre — so no correction is needed for that.
+ * clientX/clientY IS the arrow tip in every browser — the default pointer's
+ * hotspot is its point, not its centre — so no correction is needed for that.
  */
 const offsetFor = (p: { x: number; y: number }) =>
-  `translate3d(${p.x - HINT_W / 2}px, ${p.y - HINT_W * HINT_ASPECT - HINT_GAP}px, 0)`
+  `translate3d(${p.x - HINT_W * TAIL_X}px, ${p.y - HINT_W * HINT_ASPECT * TAIL_Y - HINT_GAP}px, 0)`
 
 export function HoldHint({
   active,
@@ -147,9 +157,9 @@ export function HoldHint({
         // Seeded on the very first paint. The rAF loop takes over from the next
         // frame, but without this the initial render would land at 0,0.
         transform: offsetFor(pos.current),
-        // Bottom-centre: the bubble now sits centred above the cursor, so it
-        // should grow out of the arrow tip rather than from a corner.
-        transformOrigin: '50% 100%',
+        // The tail's point — the one spot pinned to the cursor — so the bubble
+        // grows out of the arrow tip and stays anchored there through the pop.
+        transformOrigin: `${TAIL_X * 100}% ${TAIL_Y * 100}%`,
         // ease-out-quart: decelerates hard, so it lands as a pop without the
         // dated rubber-band overshoot.
         animation: reduced
