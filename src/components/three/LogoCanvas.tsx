@@ -16,6 +16,7 @@ export default function LogoCanvas({
   ignite = false,
   onIgnitionCue,
   onIgnitionDone,
+  onLogoHover,
 }: {
   onReady?: () => void
   config?: SeparationConfig
@@ -25,6 +26,8 @@ export default function LogoCanvas({
   ignite?: boolean
   onIgnitionCue?: () => void
   onIgnitionDone?: () => void
+  /** fires when the cursor moves onto or off the mark, for the click-and-hold hint */
+  onLogoHover?: (over: boolean) => void
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const engineRef = useRef<LogoEngine | null>(null)
@@ -34,8 +37,10 @@ export default function LogoCanvas({
   // first render. Reading through refs keeps it pointed at the current ones.
   const cueRef = useRef(onIgnitionCue)
   const doneRef = useRef(onIgnitionDone)
+  const hoverRef = useRef(onLogoHover)
   cueRef.current = onIgnitionCue
   doneRef.current = onIgnitionDone
+  hoverRef.current = onLogoHover
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -62,6 +67,8 @@ export default function LogoCanvas({
       else if (e === 'done') doneRef.current?.()
     })
 
+    const offHover = engine.onLogoHover((over) => hoverRef.current?.(over))
+
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     engine.setInteractive(!reduced)
 
@@ -86,6 +93,7 @@ export default function LogoCanvas({
     return () => {
       window.removeEventListener('resize', onResize)
       offIgnition()
+      offHover()
       engine.dispose()
       engineRef.current = null
     }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { CALIB } from '../../lib/three/calibration'
+import { CALIB, videoCoverScale } from '../../lib/three/calibration'
 
 /**
  * "Margin notes" constellation (spec: _PLAN/SYNAPSER-STYLE-WEBSITE-PLAN.md §10):
@@ -133,10 +133,19 @@ export function ConstellationField({
       // mirror LogoEngine's mobile-vs-desktop scale so the string-anchor box
       // matches the 3D logo's ACTUAL rendered size, not the desktop one
       const heightFrac = mobile ? CALIB.MOBILE_HEIGHT_FRAC : CALIB.HEIGHT_FRAC
-      const lh = heightFrac * H
+      // The mesh is ALSO scaled by the video's object-fit:cover factor on
+      // desktop (LogoEngine.applyCalibration), which is >1 on any viewport
+      // wider than 16:9 — 1.14x at 1920x950, 1.33x on an ultrawide. Omitting it
+      // here left the words believing the logo was smaller than it renders, so
+      // they drifted straight over it. Mobile is excluded for the same reason
+      // LogoEngine excludes it: that breakpoint sizes the video differently.
+      const cover = mobile ? 1 : videoCoverScale(W, H)
+      const lh = heightFrac * H * cover
       logoRect = {
         cx: CALIB.CENTER_X * W,
-        cy: CALIB.CENTER_Y * H,
+        // The vertical offset from centre scales with cover too, exactly as the
+        // mesh's group.position.y does.
+        cy: H / 2 + (CALIB.CENTER_Y - 0.5) * H * cover,
         hw: (lh * LOGO_ASPECT) / 2 + LOGO_PAD,
         hh: lh / 2 + LOGO_PAD,
         isLogo: true,
