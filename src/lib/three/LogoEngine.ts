@@ -69,6 +69,17 @@ export class LogoEngine {
   private downX = 0
   private downY = 0
 
+  // cursor-over-the-mark, for the "click & hold" hint
+  private raycaster = new THREE.Raycaster()
+  private hoverNdc = new THREE.Vector2()
+  private logoHover = false
+  private hoverCheckedAt = 0
+  private hoverX = 0
+  private hoverY = 0
+  /** no pointer has been seen yet — do not report hover from a phantom 0,0 */
+  private hoverSeen = false
+  private hoverListeners = new Set<(over: boolean) => void>()
+
   // electrical wireframe ignition
   private ignition: IgnitionController | null = null
   private ignitionUniforms: IgnitionUniforms | null = null
@@ -550,6 +561,74 @@ export class LogoEngine {
       this.vel = dx * 0.01
       this.idleTimer = 0
     }
+
+    this.hoverX = e.clientX
+    this.hoverY = e.clientY
+    this.hoverSeen = true
+  }
+
+  /**
+   * Tracks whether the cursor is over the mark itself, so the hero can offer a
+   * "click & hold" hint — the separation and ignition are undiscoverable
+   * otherwise.
+   *
+   * Raycast rather than a bounding box: the mark is a knot with large holes, and
+   * a box would fire over blank paper well away from any geometry.
+   *
+   * Driven from tick() against the LAST KNOWN pointer position, deliberately not
+   * from the pointermove handler. Two reasons:
+   *
+   * 1. Throttling inside the event handler DROPS samples. A pointer that moves
+   *    onto the mark and stops dead can have its final move swallowed, leaving
+   *    hover false while the cursor sits right on the logo — which is exactly
+   *    the case this hint exists for.
+   * 2. The mark rotates. Whether the cursor is over it changes even when the
+   *    pointer has not moved at all, and only a polled check catches that.
+   *
+   * Still rate-limited: a hit runs triangle tests against ~19.7k triangles, and
+   * the consumer debounces by several hundred ms anyway.
+   */
+  private updateLogoHover() {
+    if (!this.hoverSeen || this.hoverListeners.size === 0) return
+
+    const now = performance.now()
+    if (now - this.hoverCheckedAt < 100) return
+    this.hoverCheckedAt = now
+
+    const group = this.group
+    if (!group) return
+
+    const rect = this.canvas.getBoundingClientRect()
+    if (rect.width === 0 || rect.height === 0) return
+    this.hoverNdc.set(
+      ((this.hoverX - rect.left) / rect.width) * 2 - 1,
+      -((this.hoverY - rect.top) / rect.height) * 2 + 1,
+    )
+    this.raycaster.setFromCamera(this.hoverNdc, this.camera)
+    // Meshes only. The group also holds the ignition cage (LineSegments) and its
+    // embers (Points), and three tests those against a distance threshold rather
+    // than real geometry — they would report hits in empty space.
+    const over = this.raycaster
+      .intersectObject(group, true)
+      .some((h) => (h.object as THREE.Mesh).isMesh)
+
+    if (over === this.logoHover) return
+    this.logoHover = over
+    this.hoverListeners.forEach((cb) => {
+      try {
+        cb(over)
+      } catch (err) {
+        console.error('LogoEngine: logo-hover listener threw', err)
+      }
+    })
+  }
+
+  /** Fires with true when the cursor moves onto the mark, false when it leaves. */
+  onLogoHover(cb: (over: boolean) => void): () => void {
+    this.hoverListeners.add(cb)
+    return () => {
+      this.hoverListeners.delete(cb)
+    }
   }
 
   /** Same squared-distance test as ShatterController.pointerMove, used when there is no controller to ask. */
@@ -656,6 +735,10 @@ export class LogoEngine {
       }
     }
 
+    // Polled rather than event-driven: the mark rotates, so whether the cursor
+    // is over it changes even when the pointer is perfectly still.
+    this.updateLogoHover()
+
     // The cage outlives the bridge so pulses can reuse it, but it must not cost
     // a draw call for the rest of the session while it is invisible.
     const cageLive = (this.ignitionUniforms?.uGlobalFade.value ?? 0) > 0.001
@@ -725,6 +808,7 @@ export class LogoEngine {
     this.ignition?.dispose()
     this.ignition = null
     this.pendingIgnitionListeners.clear()
+    this.hoverListeners.clear()
     this.cageMaterial?.dispose()
     this.cageMaterial = null
     this.cage?.geometry.dispose()

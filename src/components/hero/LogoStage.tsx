@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic'
 import { useCallback, useEffect, useState } from 'react'
 import { SketchIntro } from './SketchIntro'
+import { HoldHint } from './HoldHint'
 import type { SeparationConfig } from '../../lib/three/shatter/types'
 import type { IgnitionConfig } from '../../lib/three/ignition/types'
 
@@ -43,6 +44,7 @@ export function LogoStage({
   const [canvasReady, setCanvasReady] = useState(false)
   const [ignited, setIgnited] = useState(false)
   const [overlay, setOverlay] = useState(false)
+  const [logoHover, setLogoHover] = useState(false)
   const live = introDone && canvasReady
 
   // Both CMS switches have to gate the overlay ITSELF, not just its lead time.
@@ -97,6 +99,7 @@ export function LogoStage({
           ignite={live}
           onIgnitionCue={onCue}
           onIgnitionDone={onDone}
+          onLogoHover={setLogoHover}
         />
       </div>
       <SketchIntro
@@ -105,6 +108,10 @@ export function LogoStage({
         onNearEnd={onNearEnd}
         nearEndLeadMs={overlayWanted ? ignition.OVERLAY_LEAD_MS : 0}
       />
+      {/* Gated on `ignited`, not just hover: until the ignition's `done` fires
+          the logo is not armed, so a hold does nothing and the hint would be
+          telling the visitor to try something that cannot work yet. */}
+      <HoldHint active={ignited && logoHover} />
     </div>
   )
 }
