@@ -145,7 +145,7 @@ export const DEFAULT_IGNITION: Readonly<IgnitionConfig> = Object.freeze({
    * scales now share one reference, so the total is the number you set instead
    * of the product of two sliders.
    */
-  BLOOM_SCALE: 1,
+  BLOOM_SCALE: 1.1,
   /** silhouette of the bloomed shape. 8 = octagon; 6 reproduces the reference. */
   POLY_SIDES: 8,
   BLOOM_START: 0.15,
@@ -155,8 +155,12 @@ export const DEFAULT_IGNITION: Readonly<IgnitionConfig> = Object.freeze({
 
   /** re-ignite while the logo is held and its skin is shedding */
   PULSE_ENABLED: true,
-  /** length of one charge-only pulse, and the interval between them */
-  PULSE_MS: 800,
+  /**
+   * Length of one charge-only pulse, and the interval between them.
+   * Owner 2026-08-10: 0.8s read as too insistent while holding; 1.8s lets each
+   * pulse finish and clear before the next begins.
+   */
+  PULSE_MS: 1800,
 
   /**
    * The cage is never still. Each vertex gets its own phase and drift axis from

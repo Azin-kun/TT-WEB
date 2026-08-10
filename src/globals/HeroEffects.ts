@@ -363,7 +363,7 @@ export const HeroEffects: GlobalConfig = {
         {
           name: 'bloomScale',
           type: 'number',
-          defaultValue: 1,
+          defaultValue: 1.1,
           min: 1,
           max: 4,
           admin: {
@@ -401,9 +401,9 @@ export const HeroEffects: GlobalConfig = {
         {
           name: 'pulseMs',
           type: 'number',
-          defaultValue: 800,
+          defaultValue: 1800,
           min: 200,
-          max: 3000,
+          max: 4000,
           admin: { description: 'Length of one pulse, and the gap before the next' },
         },
       ],

@@ -90,11 +90,18 @@ const GROUPS: { title: string; rows: Row[] }[] = [
     ],
   },
   {
-    title: 'colour & pulses',
+    title: 'colour',
     rows: [
       { key: 'DARK_MASS_OPACITY', label: 'Dark mass', min: 0, max: 0.6, step: 0.01 },
       { key: 'GLOW_DECAY', label: 'Glow decay', min: 0.2, max: 8, step: 0.1 },
-      { key: 'PULSE_MS', label: 'Pulse (ms)', min: 200, max: 3000, step: 50 },
+    ],
+  },
+  {
+    // Its own group: this control was filed under 'colour & pulses' and the
+    // owner could not find it, which is the whole job of a tuning bench.
+    title: 'hold pulses',
+    rows: [
+      { key: 'PULSE_MS', label: 'Pulse length / gap (ms)', min: 200, max: 4000, step: 50 },
     ],
   },
 ]
