@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 /**
- * "Click & Hold" bubble that pops out at the cursor once it has rested on the
- * mark for a moment.
+ * "Click & Hold" bubble that appears at the cursor while it is over the mark.
  *
  * The separation and ignition effects are completely undiscoverable otherwise —
  * nothing about a slowly rotating logo suggests you can press and hold it.
@@ -12,10 +11,26 @@ import { useEffect, useRef, useState } from 'react'
  * Owner 2026-08-10.
  */
 
-/** How long the cursor must sit on the mark before the bubble appears. */
-export const HINT_DELAY_MS = 700
-/** Fade/pop duration. */
-const HINT_POP_MS = 220
+/**
+ * Wait before showing. Owner 2026-08-10: none — it appears as soon as the
+ * cursor is on the logo. Kept as a knob rather than deleted, since this is the
+ * first thing likely to be re-tuned.
+ */
+export const HINT_DELAY_MS = 0
+/**
+ * Grace period before hiding. NOT symmetric with the show delay, on purpose:
+ * the mark is a knot, so a cursor sliding across it passes over holes, and it
+ * also rotates underneath a still cursor. Hiding instantly would make the
+ * bubble blink in both cases.
+ */
+const HINT_HIDE_MS = 200
+/** Pop-in duration. */
+const HINT_POP_MS = 260
+/** Rendered width in px; the art is 804x660, so height follows at ~0.82x. */
+const HINT_W = 170
+const HINT_ASPECT = 660 / 804
+const HINT_SRC = '/media/hint-click-hold.webp'
+
 /**
  * Once someone has actually held the logo they have learned the interaction, so
  * the hint stops offering itself for the rest of the visit. Module scope rather
@@ -24,11 +39,11 @@ const HINT_POP_MS = 220
 let hasHeldThisVisit = false
 
 /**
- * Offset up and right of the cursor tip, so the bubble reads as pointing back
- * at it rather than sitting under it.
+ * Offset from the cursor. The bubble's tail points down-left, so it sits up and
+ * to the right with its tail aimed back at the cursor tip.
  */
 const offsetFor = (p: { x: number; y: number }) =>
-  `translate3d(${p.x + 14}px, ${p.y - 96}px, 0)`
+  `translate3d(${p.x + 8}px, ${p.y - HINT_W * HINT_ASPECT * 0.82}px, 0)`
 
 export function HoldHint({
   active,
@@ -48,15 +63,30 @@ export function HoldHint({
 
   useEffect(() => {
     setReduced(window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+    // Warm the bitmap well before first hover. Without this the very first
+    // appearance renders an empty box for a beat while the file downloads —
+    // measured, not theoretical. There is ample time: the hint cannot show
+    // until the ignition has finished, roughly ten seconds into the visit.
+    const pre = new Image()
+    pre.src = HINT_SRC
   }, [])
 
-  // Arm/disarm the delay.
+  // Show immediately (or after delayMs, if one is ever set); hide on a short
+  // grace period so crossing the knot's holes does not flicker it.
   useEffect(() => {
-    if (!active || hasHeldThisVisit) {
+    if (hasHeldThisVisit) {
       setShown(false)
       return
     }
-    const t = setTimeout(() => setShown(true), delayMs)
+    if (active) {
+      if (delayMs <= 0) {
+        setShown(true)
+        return
+      }
+      const t = setTimeout(() => setShown(true), delayMs)
+      return () => clearTimeout(t)
+    }
+    const t = setTimeout(() => setShown(false), HINT_HIDE_MS)
     return () => clearTimeout(t)
   }, [active, delayMs])
 
@@ -108,55 +138,31 @@ export function HoldHint({
         left: 0,
         zIndex: 40,
         pointerEvents: 'none',
-        width: 150,
+        width: HINT_W,
         // Seeded on the very first paint. The rAF loop takes over from the next
         // frame, but without this the initial render would land at 0,0.
         transform: offsetFor(pos.current),
-        transformOrigin: '0 100%',
-        // ease-out-quart. A comic bubble invites an overshoot "boing", but a
-        // pronounced one reads dated — this decelerates hard instead, which
-        // still lands as a pop at 220ms without the rubber.
-        animation: reduced ? undefined : `tt-hint-pop ${HINT_POP_MS}ms cubic-bezier(0.25, 1, 0.5, 1) both`,
+        transformOrigin: '10% 90%',
+        // ease-out-quart: decelerates hard, so it lands as a pop without the
+        // dated rubber-band overshoot.
+        animation: reduced
+          ? undefined
+          : `tt-hint-pop ${HINT_POP_MS}ms cubic-bezier(0.25, 1, 0.5, 1) both`,
         willChange: 'transform',
       }}
     >
-      {/* Placeholder art — swap for the owner's supplied PNG. Kept as inline SVG
-          so the mechanism can be judged before the asset lands. */}
-      <svg viewBox="0 0 800 620" style={{ width: '100%', height: 'auto', display: 'block' }}>
-        <path
-          fill="#E01B22"
-          d="M250 120 L215 35 L300 95 L360 20 L395 110 L470 60 L480 150 L560 130 L540 210 L640 215 L575 275 L700 320 L575 365 L640 430 L520 435 L530 510 L440 470 L400 560 L340 480 L255 545 L250 455 L150 470 L185 390 L60 370 L155 305 L35 250 L165 205 L110 140 Z"
-        />
-        <ellipse cx="415" cy="290" rx="270" ry="150" fill="#F6F1E7" stroke="#111" strokeWidth="14" />
-        <text
-          x="415"
-          y="255"
-          textAnchor="middle"
-          fontFamily="Georgia, 'Times New Roman', serif"
-          fontWeight="700"
-          fontSize="104"
-          fill="#111"
-          transform="rotate(-8 415 290)"
-        >
-          Click
-        </text>
-        <text
-          x="415"
-          y="375"
-          textAnchor="middle"
-          fontFamily="Georgia, 'Times New Roman', serif"
-          fontWeight="700"
-          fontSize="104"
-          fill="#111"
-          transform="rotate(-8 415 290)"
-        >
-          &amp; Hold
-        </text>
-      </svg>
+      <img
+        src={HINT_SRC}
+        alt=""
+        width={804}
+        height={660}
+        draggable={false}
+        style={{ width: '100%', height: 'auto', display: 'block' }}
+      />
       <style>{`
         @keyframes tt-hint-pop {
-          from { opacity: 0; transform-origin: 0 100%; scale: 0.6; }
-          to   { opacity: 1; transform-origin: 0 100%; scale: 1; }
+          from { opacity: 0; scale: 0.55; }
+          to   { opacity: 1; scale: 1; }
         }
       `}</style>
     </div>
