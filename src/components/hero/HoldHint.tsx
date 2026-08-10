@@ -27,8 +27,10 @@ const HINT_HIDE_MS = 200
 /** Pop-in duration. */
 const HINT_POP_MS = 260
 /** Rendered width in px; the art is 804x660, so height follows at ~0.82x. */
-const HINT_W = 170
+const HINT_W = 119
 const HINT_ASPECT = 660 / 804
+/** Clearance between the bubble's bottom edge and the cursor's arrow tip. */
+const HINT_GAP = 8
 const HINT_SRC = '/media/hint-click-hold.webp'
 
 /**
@@ -39,11 +41,14 @@ const HINT_SRC = '/media/hint-click-hold.webp'
 let hasHeldThisVisit = false
 
 /**
- * Offset from the cursor. The bubble's tail points down-left, so it sits up and
- * to the right with its tail aimed back at the cursor tip.
+ * Sits directly ON TOP of the cursor's arrow tip: centred horizontally on it,
+ * with the bubble's bottom edge a hair above it (owner 2026-08-10).
+ *
+ * clientX/clientY IS the arrow tip in every browser — the hotspot of the default
+ * pointer is its point, not its centre — so no correction is needed for that.
  */
 const offsetFor = (p: { x: number; y: number }) =>
-  `translate3d(${p.x + 8}px, ${p.y - HINT_W * HINT_ASPECT * 0.82}px, 0)`
+  `translate3d(${p.x - HINT_W / 2}px, ${p.y - HINT_W * HINT_ASPECT - HINT_GAP}px, 0)`
 
 export function HoldHint({
   active,
@@ -142,7 +147,9 @@ export function HoldHint({
         // Seeded on the very first paint. The rAF loop takes over from the next
         // frame, but without this the initial render would land at 0,0.
         transform: offsetFor(pos.current),
-        transformOrigin: '10% 90%',
+        // Bottom-centre: the bubble now sits centred above the cursor, so it
+        // should grow out of the arrow tip rather than from a corner.
+        transformOrigin: '50% 100%',
         // ease-out-quart: decelerates hard, so it lands as a pop without the
         // dated rubber-band overshoot.
         animation: reduced
