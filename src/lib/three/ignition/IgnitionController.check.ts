@@ -208,6 +208,26 @@ const advance = (c: IgnitionController, ms: number) => {
   check('no overlay -> normal events', events[0] === 'seed')
 }
 
+// OVERLAY_ENABLED false must make startOverlay() a genuine no-op, not merely
+// shorten its lead. SketchIntro signals near-end unconditionally (a skipped or
+// failed video still has to let the cage come up), so the engine WILL receive
+// this call with the feature switched off, and it must leave the cage at the
+// logo's true shape rather than opening the bridge on a full-size sphere.
+{
+  const cfg = { ...DEFAULT_IGNITION, OVERLAY_ENABLED: false }
+  const u = makeIgnitionUniforms(cfg, 1, new THREE.Vector3())
+  const c = new IgnitionController(u, 1, cfg)
+  c.startOverlay()
+  check('OVERLAY_ENABLED false -> startOverlay is a no-op', !c.isOverlayActive())
+  check('OVERLAY_ENABLED false -> cage stays hidden', u.uGlobalFade.value === 0)
+  check('OVERLAY_ENABLED false -> morph stays home', u.uMorph.value === 1)
+  check('OVERLAY_ENABLED false -> skin is not seized', u.uWakeActive.value === 0)
+  // and the bridge proper still behaves exactly as it does without an overlay
+  c.start()
+  advance(c, 300)
+  check('OVERLAY_ENABLED false -> bridge still runs', u.uMorph.value === 1 && u.uBloom.value === 0)
+}
+
 // The overlay itself emits nothing: seed/cue/done belong to the one-shot
 // bridge, and armed / onLive hang off them.
 {

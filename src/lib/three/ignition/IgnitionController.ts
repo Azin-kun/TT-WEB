@@ -55,6 +55,16 @@ export class IgnitionController {
     }
   }
 
+  /**
+   * Unsubscribe by identity. LogoEngine hands out its own unsubscribe closure
+   * before this controller exists, then migrates the listener onto it in
+   * load(); that closure needs a way back in, or unsubscribing silently stops
+   * working after the mesh loads.
+   */
+  offIgnition(cb: (e: IgnitionEvent) => void) {
+    this.listeners.delete(cb)
+  }
+
   getProgress(): number {
     return Math.min(1, this.t / Math.max(1, this.config.IGNITION_MS))
   }
@@ -71,6 +81,12 @@ export class IgnitionController {
    * that emitted would arm the logo while the video is still running.
    */
   startOverlay() {
+    // Guarded here as well as in LogoStage, so the engine cannot be driven into
+    // an overlay the config disables no matter what the React layer does — and
+    // so the rule is assertable by this module's check script. The two bugs this
+    // codebase has shipped in this area both lived in the React/engine seam,
+    // which is the one part the check scripts cannot otherwise reach.
+    if (!this.config.OVERLAY_ENABLED) return
     if (this.overlayStarted || this.started || this.finished) return
     this.overlayStarted = true
     this.overlayT = 0

@@ -44,7 +44,19 @@ export function LogoStage({
   const [ignited, setIgnited] = useState(false)
   const [overlay, setOverlay] = useState(false)
   const live = introDone && canvasReady
-  const onNearEnd = useCallback(() => setOverlay(true), [])
+
+  // Both CMS switches have to gate the overlay ITSELF, not just its lead time.
+  // SketchIntro's finish() signals near-end unconditionally (a skipped or failed
+  // video must still let the cage come up), so a lead of 0 does not mean "no
+  // overlay" — it only means "no early warning". Without this guard, turning
+  // ignition off raised the canvas above the still-playing video with an
+  // unpatched, fully opaque skin, popping the solid logo over the last second
+  // of the sketch video: strictly worse than the plain crossfade the switch
+  // promises to restore.
+  const overlayWanted = ignition.ENABLED && ignition.OVERLAY_ENABLED
+  const onNearEnd = useCallback(() => {
+    if (overlayWanted) setOverlay(true)
+  }, [overlayWanted])
 
   // The words enter at the ignition's cue rather than when the canvas appears:
   // the cue lands just as the charge front finishes, so the energy disperses
@@ -91,7 +103,7 @@ export function LogoStage({
         onDone={() => setIntroDone(true)}
         onPlayStart={onIntroPlayStart}
         onNearEnd={onNearEnd}
-        nearEndLeadMs={ignition.OVERLAY_ENABLED ? ignition.OVERLAY_LEAD_MS : 0}
+        nearEndLeadMs={overlayWanted ? ignition.OVERLAY_LEAD_MS : 0}
       />
     </div>
   )

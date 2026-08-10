@@ -222,7 +222,13 @@ export class LogoEngine {
         const seed = iu.uSeed.value
         let reach = Math.max(...corners.map((c) => c.distanceTo(seed)))
         if (this.ignitionConfig.OVERLAY_ENABLED) {
-          reach = Math.max(reach, iu.uSphereR.value * this.ignitionConfig.BLOOM_SCALE)
+          // uBloomR is the polygon's INRADIUS: makeIgnitionUniforms premultiplies
+          // by cos(pi/N) so tt_polyR's corner peak of 1/cos(pi/N) lands exactly on
+          // the requested total extent. Divide it back out to get the corner
+          // distance the front actually has to cross, and measure it from the seed
+          // like the logo term above, since SEED_OFFSET_* moves the origin.
+          const cornerR = iu.uBloomR.value / Math.cos(Math.PI / this.ignitionConfig.POLY_SIDES)
+          reach = Math.max(reach, cornerR + seed.distanceTo(iu.uCentre.value))
         }
         if (!(reach > 0)) reach = logoHeight
 
@@ -426,6 +432,11 @@ export class LogoEngine {
    * tick(); exposed so the dev bench can tune PULSE_MS in isolation.
    */
   pulseIgnition() {
+    // tick() only advances a pulse when PULSE_ENABLED, so firing one with the
+    // flag off would raise uGlobalFade to 1 and then never bring it back down —
+    // the cage would stay fully lit forever. Dev-bench only, but it would
+    // mislead exactly the tuning the bench exists for.
+    if (!this.ignitionConfig.PULSE_ENABLED) return
     this.ignition?.pulse()
   }
 
@@ -439,8 +450,14 @@ export class LogoEngine {
       return () => {}
     }
     this.pendingIgnitionListeners.add(cb)
+    // load() migrates pending listeners onto the controller and clears this set,
+    // so an unsubscribe that only deleted from the set would silently stop
+    // working the moment the mesh finished loading — the same "call quietly does
+    // nothing" shape as the setShatterArmed bug. Re-target the controller if one
+    // has appeared by the time the caller unsubscribes.
     return () => {
       this.pendingIgnitionListeners.delete(cb)
+      this.ignition?.offIgnition(cb)
     }
   }
 

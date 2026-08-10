@@ -122,7 +122,7 @@ const PERTURBED: typeof DEFAULT_IGNITION = {
   MORPH_START: 0.75,
   PULSE_ENABLED: false,
   PULSE_MS: 1200,
-  WIRE_JITTER: 0.07,
+  WIRE_JITTER: 0.11,
   WIRE_SPEED: 1.9,
   SPARK_STAGGER: 0.13,
   SPARK_RATE: 3.2,
@@ -133,6 +133,17 @@ const PERTURBED: typeof DEFAULT_IGNITION = {
   EMBER_SIZE: 6.5,
   EMBER_TWINKLE: 4.4,
   EMBER_OPACITY: 0.66,
+}
+
+// Guard the guard. Every PERTURBED value must actually differ from its default,
+// or its round-trip assertion below is a tautology that passes even when the
+// field is dropped from toIgnitionPayload or read from the wrong group. This is
+// not hypothetical: WIRE_JITTER was perturbed to 0.03 when written, and the
+// tuning commit bef770e moved the DEFAULT to 0.07 — silently neutering that one
+// assertion. Checking it structurally means the next default change cannot do
+// the same thing quietly.
+for (const key of Object.keys(PERTURBED) as (keyof typeof PERTURBED)[]) {
+  check(`perturbed value differs from default: ${key}`, PERTURBED[key] !== DEFAULT_IGNITION[key])
 }
 
 const round = resolveIgnition(toIgnitionPayload(PERTURBED))
