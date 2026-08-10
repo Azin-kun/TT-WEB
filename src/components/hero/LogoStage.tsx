@@ -1,9 +1,10 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { SketchIntro } from './SketchIntro'
 import type { SeparationConfig } from '../../lib/three/shatter/types'
+import type { IgnitionConfig } from '../../lib/three/ignition/types'
 
 // next/dynamic(ssr:false) keeps three.js out of the base bundle.
 const LogoCanvas = dynamic(() => import('../three/LogoCanvas'), {
@@ -17,26 +18,51 @@ const CANVAS_READY_FALLBACK_MS = 4000
 
 /**
  * Composes the hero logo: the 3D canvas underneath, the sketch-draw video on
- * top. The video crossfades out (opacity in SketchIntro) once it ends; the
- * canvas fades in once its mesh is ready, so the handoff is seamless (spec §7).
+ * top. The video fades out once it ends and the canvas fades in, but the real
+ * bridge between them is the electrical wireframe ignition (spec §3.1) — the
+ * video's last frame and the cold cage are both dark lines on warm paper, so
+ * there is no cut to hide.
+ *
+ * Signal order (spec §4.4):
+ *   introDone && canvasReady -> canvas visible, startIgnition()
+ *   ignition 'cue'           -> onLive fires, floating words enter
+ *   ignition 'done'          -> separation arms
  */
 export function LogoStage({
   onLive,
   onIntroPlayStart,
   separation,
+  ignition,
 }: {
   onLive?: () => void
   onIntroPlayStart?: () => void
   separation: SeparationConfig
+  ignition: IgnitionConfig
 }) {
   const [introDone, setIntroDone] = useState(false)
   const [canvasReady, setCanvasReady] = useState(false)
+  const [ignited, setIgnited] = useState(false)
+  const [overlay, setOverlay] = useState(false)
   const live = introDone && canvasReady
 
-  // signal consumers (constellation entrance) once the 3D logo is truly on screen
-  useEffect(() => {
-    if (live) onLive?.()
-  }, [live, onLive])
+  // Both CMS switches have to gate the overlay ITSELF, not just its lead time.
+  // SketchIntro's finish() signals near-end unconditionally (a skipped or failed
+  // video must still let the cage come up), so a lead of 0 does not mean "no
+  // overlay" — it only means "no early warning". Without this guard, turning
+  // ignition off raised the canvas above the still-playing video with an
+  // unpatched, fully opaque skin, popping the solid logo over the last second
+  // of the sketch video: strictly worse than the plain crossfade the switch
+  // promises to restore.
+  const overlayWanted = ignition.ENABLED && ignition.OVERLAY_ENABLED
+  const onNearEnd = useCallback(() => {
+    if (overlayWanted) setOverlay(true)
+  }, [overlayWanted])
+
+  // The words enter at the ignition's cue rather than when the canvas appears:
+  // the cue lands just as the charge front finishes, so the energy disperses
+  // INTO them instead of the two events merely coinciding.
+  const onCue = useCallback(() => onLive?.(), [onLive])
+  const onDone = useCallback(() => setIgnited(true), [])
 
   useEffect(() => {
     if (!introDone || canvasReady) return
@@ -53,13 +79,32 @@ export function LogoStage({
         style={{
           position: 'absolute',
           inset: 0,
-          opacity: live ? 1 : introDone ? 0.001 : 0,
-          transition: 'opacity 0.6s ease',
+          // Once the overlay starts the canvas sits ABOVE the video and stays
+          // there. It has to, or the cage would be hidden behind an opaque
+          // video — and dropping back down at the cut would bury the charge
+          // behind the video's own half-second fade-out.
+          zIndex: overlay ? 3 : 0,
+          opacity: live || overlay ? 1 : introDone ? 0.001 : 0,
+          transition: 'opacity 0.4s ease',
         }}
       >
-        <LogoCanvas onReady={() => setCanvasReady(true)} config={separation} armed={live} />
+        <LogoCanvas
+          onReady={() => setCanvasReady(true)}
+          config={separation}
+          ignition={ignition}
+          armed={ignited}
+          overlay={overlay}
+          ignite={live}
+          onIgnitionCue={onCue}
+          onIgnitionDone={onDone}
+        />
       </div>
-      <SketchIntro onDone={() => setIntroDone(true)} onPlayStart={onIntroPlayStart} />
+      <SketchIntro
+        onDone={() => setIntroDone(true)}
+        onPlayStart={onIntroPlayStart}
+        onNearEnd={onNearEnd}
+        nearEndLeadMs={overlayWanted ? ignition.OVERLAY_LEAD_MS : 0}
+      />
     </div>
   )
 }

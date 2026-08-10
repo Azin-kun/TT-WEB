@@ -7,6 +7,7 @@ import { ServicesRows } from './ServicesRows'
 import { ArchiveTeaser } from './ArchiveTeaser'
 import { ContactMailto } from './ContactMailto'
 import { resolveSeparation } from '../../lib/three/shatter/resolveSeparation'
+import { resolveIgnition } from '../../lib/three/ignition/resolveIgnition'
 
 type Blocks = NonNullable<Page['layout']>
 
@@ -35,6 +36,7 @@ export async function RenderBlocks({
                   scrollCue={block.scrollCue}
                   constellationEnabled={block.constellationEnabled ?? true}
                   separation={resolveSeparation(effects)}
+                  ignition={resolveIgnition(effects)}
                   floatingWords={(block.floatingWords || [])
                     .map((w) => w.word)
                     .filter((w): w is string => !!w)}

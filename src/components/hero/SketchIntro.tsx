@@ -12,14 +12,20 @@ import { useEffect, useRef, useState } from 'react'
 export function SketchIntro({
   onDone,
   onPlayStart,
+  onNearEnd,
+  nearEndLeadMs = 0,
 }: {
   onDone: () => void
   onPlayStart?: () => void
+  /** fires once, `nearEndLeadMs` before playback ends — the ignition cage rides in here */
+  onNearEnd?: () => void
+  nearEndLeadMs?: number
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [hidden, setHidden] = useState(false)
   const doneRef = useRef(false)
   const startedRef = useRef(false)
+  const nearEndRef = useRef(false)
 
   // Fires once, when playback truly begins (first `playing` event) — the
   // headline keys off this instead of mount time, so it can't type over a
@@ -30,10 +36,27 @@ export function SketchIntro({
     onPlayStart?.()
   }
 
+  const signalNearEnd = () => {
+    if (nearEndRef.current) return
+    nearEndRef.current = true
+    onNearEnd?.()
+  }
+
+  // `timeupdate` only fires a few times a second, so this lands within ~250ms of
+  // the intended moment. That is deliberately tolerated: the ignition completes
+  // the morph itself if the overlay is cut short, which is the same mechanism
+  // that absorbs the video's own duration not being frame-exact.
+  const onTimeUpdate = () => {
+    const v = videoRef.current
+    if (!v || !Number.isFinite(v.duration) || v.duration <= 0) return
+    if (v.currentTime >= v.duration - nearEndLeadMs / 1000) signalNearEnd()
+  }
+
   const finish = () => {
     if (doneRef.current) return
     doneRef.current = true
     signalStart() // skipped/failed video must not strand headline consumers
+    signalNearEnd() // ditto: a skipped video must still let the cage come up
     setHidden(true)
     onDone()
   }
@@ -69,6 +92,7 @@ export function SketchIntro({
         playsInline
         preload="auto"
         onPlaying={signalStart}
+        onTimeUpdate={onTimeUpdate}
         onEnded={finish}
         onError={finish}
         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
