@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { CALIB, visibleHeight } from './calibration'
+import { CALIB, videoCoverScale, visibleHeight } from './calibration'
 import { loadLogo } from './loadLogo'
 import { makePencilMaterials, type LogoMaterials } from './materials'
 import { partitionForShatter } from './shatter/partition'
@@ -52,6 +52,12 @@ export class LogoEngine {
   private idleTimer = 0
   private tilt = { x: 0, z: 0, tx: 0, tz: 0 }
   private interactive = true
+
+  // calibration inputs, kept so resize() can re-apply it (the cover correction
+  // depends on the viewport aspect, which changes as the window changes)
+  private baseSizeY = 0
+  private heightFrac = CALIB.HEIGHT_FRAC
+  private isMobileScale = false
 
   // hold-to-shatter
   private shatter: ShatterController | null = null
@@ -113,8 +119,12 @@ export class LogoEngine {
     const visH = visibleHeight()
     const box = new THREE.Box3().setFromObject(group)
     const size = box.getSize(new THREE.Vector3())
-    if (size.y > 0) group.scale.setScalar((heightFrac * visH) / size.y)
-    group.position.y = (0.5 - CALIB.CENTER_Y) * visH
+    // Kept so the calibration can be re-applied on resize: once the group is
+    // scaled, Box3.setFromObject would report the SCALED height and compound.
+    this.baseSizeY = size.y
+    this.heightFrac = heightFrac
+    this.isMobileScale = isMobile
+    this.applyCalibration()
 
     const set = this.materials
     group.traverse((o) => {
@@ -667,6 +677,33 @@ export class LogoEngine {
     this.renderer.setSize(w, h, false)
     this.camera.aspect = w / h
     this.camera.updateProjectionMatrix()
+    // The cover correction depends on the viewport's aspect, so it has to be
+    // recomputed here and not only once at load.
+    this.applyCalibration()
+  }
+
+  /**
+   * Sizes and positions the mark to land exactly where the sketch video's logo
+   * was, so the handoff does not jump.
+   *
+   * Scaling the GROUP is deliberately the only lever: the cage, the embers and
+   * the inner body are all parented to it, and every effect shader works in
+   * local `position` space, so a uniform group scale moves the whole assembly
+   * together and leaves all the owner-tuned proportions untouched.
+   */
+  private applyCalibration() {
+    const group = this.group
+    if (!group || !(this.baseSizeY > 0)) return
+    const visH = visibleHeight()
+    const cover = this.isMobileScale
+      ? 1
+      : videoCoverScale(
+          this.canvas.clientWidth || window.innerWidth,
+          this.canvas.clientHeight || window.innerHeight,
+        )
+    group.scale.setScalar((this.heightFrac * visH * cover) / this.baseSizeY)
+    group.position.y = (0.5 - CALIB.CENTER_Y) * visH * cover
+    this.baseY = group.position.y
   }
 
   /**

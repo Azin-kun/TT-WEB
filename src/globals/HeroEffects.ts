@@ -401,7 +401,7 @@ export const HeroEffects: GlobalConfig = {
         {
           name: 'pulseMs',
           type: 'number',
-          defaultValue: 1800,
+          defaultValue: 2500,
           min: 200,
           max: 4000,
           admin: { description: 'Length of one pulse, and the gap before the next' },

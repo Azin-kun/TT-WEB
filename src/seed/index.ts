@@ -118,7 +118,7 @@ const run = async () => {
         bloomEnd: 0.6,
         morphStart: 0.6,
       },
-      ignitionPulse: { pulseEnabled: true, pulseMs: 1800 },
+      ignitionPulse: { pulseEnabled: true, pulseMs: 2500 },
       ignitionLife: {
         wireJitter: 0.07,
         wireSpeed: 6,

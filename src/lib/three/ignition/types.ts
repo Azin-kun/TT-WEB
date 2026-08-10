@@ -157,10 +157,10 @@ export const DEFAULT_IGNITION: Readonly<IgnitionConfig> = Object.freeze({
   PULSE_ENABLED: true,
   /**
    * Length of one charge-only pulse, and the interval between them.
-   * Owner 2026-08-10: 0.8s read as too insistent while holding; 1.8s lets each
-   * pulse finish and clear before the next begins.
+   * Owner 2026-08-10: 0.8s read as too insistent while holding. Settled on 2.5s,
+   * which lets each pulse finish and clear well before the next begins.
    */
-  PULSE_MS: 1800,
+  PULSE_MS: 2500,
 
   /**
    * The cage is never still. Each vertex gets its own phase and drift axis from
