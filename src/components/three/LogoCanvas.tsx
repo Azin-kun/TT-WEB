@@ -117,12 +117,20 @@ export default function LogoCanvas({
     engineRef.current?.setShatterArmed(armed)
   }, [armed])
 
+  // touchAction is pan-y, not none. This canvas fills the hero's full 100svh,
+  // so touch-action: none made it swallow every vertical swipe and a phone
+  // simply could not scroll past the first screen. pan-y hands vertical panning
+  // back to the browser and still claims horizontal gestures, which is all the
+  // logo needs — drag-to-spin reads dx only (see LogoEngine.onMove), and
+  // hold-to-separate is a stationary press. A hold that drifts far enough to
+  // become a vertical pan now arrives as pointercancel, which onCancel already
+  // treats as "never leave a blast stuck open".
   return (
     <canvas
       ref={canvasRef}
       aria-label="Rotating TAMPA TARUNO logo"
       role="img"
-      style={{ width: '100%', height: '100%', display: 'block', touchAction: 'none' }}
+      style={{ width: '100%', height: '100%', display: 'block', touchAction: 'pan-y' }}
     />
   )
 }
