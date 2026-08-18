@@ -18,6 +18,8 @@ type Props = {
   separation: SeparationConfig
   ignition: IgnitionConfig
   floatingWords?: string[]
+  /** Hero block's `mobileWordLimit` — how many floating words a phone shows. */
+  mobileWordLimit?: number
 }
 
 const TYPE_DUR_S = 1.4 // characters finish typing by this mark (owner 2026-07-17: 1.4s reveal / 7s full)
@@ -66,6 +68,7 @@ export function HeroBlock({
   separation,
   ignition,
   floatingWords = [],
+  mobileWordLimit,
 }: Props) {
   const metaRef = useRef<HTMLDivElement>(null)
   const cueRef = useRef<HTMLSpanElement>(null)
@@ -138,7 +141,12 @@ export function HeroBlock({
         separation={separation}
         ignition={ignition}
       />
-      <ConstellationField words={floatingWords} enabled={constellationEnabled} active={stageLive} />
+      <ConstellationField
+        words={floatingWords}
+        enabled={constellationEnabled}
+        active={stageLive}
+        mobileLimit={mobileWordLimit}
+      />
 
       <div
         className={`hero-headline-overlay${headlineStarted ? ' headline-started' : ''}`}

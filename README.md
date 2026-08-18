@@ -98,10 +98,19 @@ migration in production). No other file references the DB adapter.
 - **Collections:** `works`, `services`, `manifesto-statements`, `pages`
   (block-based: Hero, ManifestoStrip, FeaturedWorks, ServicesRows,
   ArchiveTeaser, ContactMailto, RichText, MediaFull), `media`, `users`.
-  - **Hero block** also carries `floatingWords` (localized array, up to 18
-    short words) and `constellationEnabled` (checkbox) — the "margin notes"
-    constellation tethered to the 3D logo by pencil strings. Editable per
-    locale in `/admin`; the hero looks complete without it if disabled/empty.
+  - **Hero block** also carries the "margin notes" constellation tethered to
+    the 3D logo by pencil strings — `constellationEnabled` (checkbox),
+    `floatingWords` (localized array, 4–18 short words) and `mobileWordLimit`
+    (4–18, default 8). Editable per locale in `/admin`; the hero looks complete
+    without it if disabled or empty.
+
+    Order in `floatingWords` is the setting, not decoration: a phone renders
+    only the first `mobileWordLimit` of them, because the hero is one screen
+    tall there and the full list crowds the logo. The array's rows are labelled
+    with the word itself and mark everything past the cutoff as *desktop only*
+    ([`src/admin/FloatingWordRowLabel.tsx`](src/admin/FloatingWordRowLabel.tsx)),
+    so reordering doesn't mean opening eighteen numbered rows to see what is
+    inside them.
 - **Global:** `site-settings` (nav labels, contact info). The site ships a
   single Atelier appearance — no appearance-switch labels or transition
   kill-switch.

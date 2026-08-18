@@ -56,8 +56,11 @@ export const content = {
     line1: { en: 'Mitreka Satata', id: 'Mitreka Satata' } as T2,
     line2: { en: 'Jer Basuki Mawa Bea', id: 'Jer Basuki Mawa Bea' } as T2,
     scrollCue: { en: 'Scroll', id: 'Scroll' } as T2,
-    // Margin notes tethered to the 3D logo. ConstellationField renders only the
-    // first 8 on mobile, so the craft vocabulary leads and module nouns trail.
+    // How many of the words below a phone shows (hero block's mobileWordLimit).
+    mobileWordLimit: 8,
+    // Margin notes tethered to the 3D logo. A phone renders only the first
+    // mobileWordLimit of them, so the craft vocabulary leads and the module
+    // nouns trail — reorder in /admin, the list there marks the cutoff.
     floatingWords: {
       en: [
         'empu', 'forged', 'precision', 'graphite',

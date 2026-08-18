@@ -257,6 +257,7 @@ const run = async () => {
           locationLine: settings.locationLine.en,
           scrollCue: hero.scrollCue.en,
           constellationEnabled: true,
+          mobileWordLimit: hero.mobileWordLimit,
           floatingWords: hero.floatingWords.en.map((word) => ({ word })),
         },
         { blockType: 'manifestoStrip' },

@@ -40,6 +40,9 @@ export async function RenderBlocks({
                   floatingWords={(block.floatingWords || [])
                     .map((w) => w.word)
                     .filter((w): w is string => !!w)}
+                  // null when the field was never touched — let the component's
+                  // own default stand rather than passing null through.
+                  mobileWordLimit={block.mobileWordLimit ?? undefined}
                 />
               )
             }

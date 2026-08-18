@@ -30,7 +30,7 @@ const PULSE_EVERY_MS = 6500
 const PULSE_HOLD_MS = 1500
 const ENTRANCE_STAGGER_MS = 1500
 const ENTRANCE_DUR_MS = 2000
-const MOBILE_MAX_WORDS = 8
+const MOBILE_MAX_WORDS = 8 // fallback only — the hero block's `mobileWordLimit` drives this
 const HOVER_BLINK_MS = 160 // on/off period for the "caught by cursor" red blink
 const HOVER_VIBRATE_PX = 3.5 // jitter amplitude while caught (vs the idle word's stillness)
 
@@ -63,10 +63,13 @@ export function ConstellationField({
   words,
   enabled,
   active,
+  mobileLimit = MOBILE_MAX_WORDS,
 }: {
   words: string[]
   enabled: boolean
   active: boolean
+  /** How many words a phone shows, from the hero block's `mobileWordLimit`. */
+  mobileLimit?: number
 }) {
   const rootRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -169,7 +172,7 @@ export function ConstellationField({
         avoidRects.push({ cx: W / 2, cy: (r.height - sec.top) / 2, hw: W / 2, hh: Math.max(r.bottom - sec.top, 0) / 2 + 8 })
       }
 
-      const maxWords = mobile ? MOBILE_MAX_WORDS : states.length
+      const maxWords = mobile ? mobileLimit : states.length
       states.forEach((s, i) => {
         s.visible = i < maxWords
         s.el.style.display = s.visible ? '' : 'none'
@@ -601,7 +604,7 @@ export function ConstellationField({
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [words.join(' '), enabled, reduced])
+  }, [words.join(' '), enabled, reduced, mobileLimit])
 
   if (!enabled || words.length === 0) return null
 

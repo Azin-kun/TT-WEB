@@ -298,7 +298,11 @@ export interface Page {
              */
             constellationEnabled?: boolean | null;
             /**
-             * 8–18 short words orbiting the logo; order = priority (small screens show only the first 8)
+             * How many words a phone shows. The hero is one screen tall there, so the full list overcrowds the logo — the first N in the list survive, the rest are desktop-only and marked as such in the list below.
+             */
+            mobileWordLimit?: number | null;
+            /**
+             * Short words orbiting the logo — 8 to 12 reads best. Order is the setting, not decoration: a phone shows only the first few (see the limit above), so lead with the words that matter and let the rest trail.
              */
             floatingWords?:
               | {
@@ -603,6 +607,7 @@ export interface PagesSelect<T extends boolean = true> {
               locationLine?: T;
               scrollCue?: T;
               constellationEnabled?: T;
+              mobileWordLimit?: T;
               floatingWords?:
                 | T
                 | {
