@@ -36,6 +36,16 @@ export default buildConfig({
   typescript: { outputFile: path.resolve(dirname, 'payload-types.ts') },
   db: sqliteAdapter({
     client: { url: process.env.DATABASE_URI || 'file:./tampa-taruno.db' },
+    // Payload runs pushDevSchema on EVERY payload.init() outside production,
+    // and that push finishes by writing to payload_migrations. Next dev inits
+    // Payload once per worker process and again whenever HMR reloads this
+    // config, so two pushes regularly land together, collide on the sqlite
+    // write lock, and throw SQLITE_BUSY out of init() — unhandled, killing the
+    // dev server. It fired on nearly every navigation to a route that had not
+    // been compiled yet. libsql exposes no busy timeout to wait it out, so the
+    // push is opt-in instead: run `npm run db:push` after changing a
+    // collection, global or field, and plain `npm run dev` never writes schema.
+    push: process.env.PAYLOAD_DEV_PUSH === 'true',
   }),
   sharp,
 })

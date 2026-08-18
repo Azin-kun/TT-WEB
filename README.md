@@ -27,6 +27,21 @@ First run creates `tampa-taruno.db` (SQLite) automatically. Admin panel:
 `tampataruno-2026` (or whatever `SEED_ADMIN_PASSWORD` was set to — **change
 the password after first login**).
 
+**Schema changes need `npm run db:push`.** `npm run dev` deliberately does not
+push schema (`push` in `payload.config.ts`): Payload pushes on every
+`payload.init()`, Next dev inits Payload once per worker process and again on
+every HMR reload of the config, and two pushes landing together deadlock on the
+SQLite write lock — SQLITE_BUSY escapes `init()` unhandled and kills the dev
+server. So after adding or changing a collection, a global or a field:
+
+```bash
+npm run db:push       # stop the dev server first — both want the write lock
+```
+
+Skip it and the app queries a table that isn't there yet (`no such table:
+hero_effects`). `npm run seed` pushes on its own, so a fresh install needs no
+extra step.
+
 **Re-seed from scratch:** stop the dev server, delete `tampa-taruno.db`, then
 run the commands below — and delete `.next` before starting the server again.
 Seeding writes to SQLite behind Next's back, so the revalidate hooks never fire

@@ -1,5 +1,5 @@
 import { unstable_cache } from 'next/cache'
-import { getPayload } from 'payload'
+import { getPayload, type Payload } from 'payload'
 import config from '@payload-config'
 
 import type { Page, Work, Service, ManifestoStatement, SiteSetting, HeroEffect } from '../payload-types'
@@ -8,7 +8,19 @@ import { defaultLocale, type Locale } from './i18n'
 export type { Locale }
 export { locales, defaultLocale } from './i18n'
 
-const payloadPromise = getPayload({ config })
+// Pinned to globalThis, not just to this module: Next dev re-evaluates this
+// module on every HMR pass, and a plain module-level promise would leave a new
+// Payload instance (and its connection) behind each time. globalThis outlives
+// module re-evaluation, so a dev process keeps exactly one.
+//
+// This is housekeeping, not the fix for the SQLITE_BUSY crashes on navigation —
+// those came from schema push racing across worker processes, which globalThis
+// cannot reach. See the `push` comment in payload.config.ts.
+const globalForPayload = globalThis as typeof globalThis & {
+  __ttPayload?: Promise<Payload>
+}
+
+const payloadPromise = (globalForPayload.__ttPayload ??= getPayload({ config }))
 
 export const getSettings = (locale: Locale): Promise<SiteSetting> =>
   unstable_cache(
