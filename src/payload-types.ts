@@ -97,9 +97,11 @@ export interface Config {
   fallbackLocale: ('false' | 'none' | 'null') | false | null | ('en' | 'id') | ('en' | 'id')[];
   globals: {
     'site-settings': SiteSetting;
+    'hero-effects': HeroEffect;
   };
   globalsSelect: {
     'site-settings': SiteSettingsSelect<false> | SiteSettingsSelect<true>;
+    'hero-effects': HeroEffectsSelect<false> | HeroEffectsSelect<true>;
   };
   locale: 'en' | 'id';
   widgets: {
@@ -744,6 +746,258 @@ export interface SiteSetting {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "hero-effects".
+ */
+export interface HeroEffect {
+  id: number;
+  /**
+   * Lets visitors press and hold the logo to pull it apart. Turning this off keeps the glass look, hatching and light wash — it only disables the interaction.
+   */
+  separationEnabled?: boolean | null;
+  /**
+   * How long the charge and the reassembly take
+   */
+  timing?: {
+    chargeMs?: number | null;
+    reformMs?: number | null;
+    /**
+     * Fraction of the charge that passes before anything moves
+     */
+    separateStart?: number | null;
+    staggerMax?: number | null;
+  };
+  /**
+   * How far and how the six faces travel
+   */
+  motion?: {
+    /**
+     * Drift distance as a multiple of logo height. Above ~1.0 the faces leave the screen before you can watch them.
+     */
+    spreadFrac?: number | null;
+    spreadVar?: number | null;
+    lateralDrift?: number | null;
+    spinMin?: number | null;
+    spinMax?: number | null;
+    /**
+     * Cutoff deciding whether a surface is a flat face or a side wall
+     */
+    capNormalMin?: number | null;
+  };
+  /**
+   * Pencil hatching and the sweeping light wash
+   */
+  material?: {
+    normalFollow?: number | null;
+    hatchStrength?: number | null;
+    /**
+     * Higher = coarser strokes, lower = denser
+     */
+    hatchScale?: number | null;
+    shineStrength?: number | null;
+    shineWidth?: number | null;
+    shineSpeed?: number | null;
+    shineChargeBoost?: number | null;
+    /**
+     * Warm end of the light wash, 6-digit hex
+     */
+    shineWarm?: string | null;
+    /**
+     * Hot end of the light wash, 6-digit hex
+     */
+    shineBright?: string | null;
+  };
+  /**
+   * The glass skin and the ghost logo left behind
+   */
+  body?: {
+    /**
+     * Below ~0.5 the black and red wash out against the paper background.
+     */
+    skinOpacity?: number | null;
+    /**
+     * At 0 only the wireframe outline of the ghost logo is drawn
+     */
+    bodyOpacity?: number | null;
+    bodyEdgeOpacity?: number | null;
+    /**
+     * Degrees. Lower draws more edges and gets noisy quickly.
+     */
+    bodyEdgeAngle?: number | null;
+  };
+  /**
+   * Shake while charging, and drag sensitivity
+   */
+  feel?: {
+    vibrateFrac?: number | null;
+    vibratePhaseStep?: number | null;
+    /**
+     * Pointer travel that turns a hold into a drag
+     */
+    dragThresholdPx?: number | null;
+  };
+  /**
+   * Plays the electrical wireframe transition between the sketch video and the rotating 3D logo. Turning this off restores the plain crossfade.
+   */
+  ignitionEnabled?: boolean | null;
+  /**
+   * Total length, and the phase boundaries as fractions of it. Changing the duration retimes everything proportionally.
+   */
+  ignitionTiming?: {
+    /**
+     * Total length of the transition. The main pacing control.
+     */
+    ignitionMs?: number | null;
+    /**
+     * Fraction where the core bloom ends and the front starts moving
+     */
+    seedEnd?: number | null;
+    /**
+     * Fraction where the charge front finishes crossing the logo
+     */
+    frontEnd?: number | null;
+    /**
+     * Fraction where the floating words / orbs are told to enter
+     */
+    cueFrac?: number | null;
+  };
+  /**
+   * Where the charge starts and how wide its crest is
+   */
+  ignitionShape?: {
+    seedOffsetX?: number | null;
+    seedOffsetY?: number | null;
+    seedOffsetZ?: number | null;
+    /**
+     * Width of the glowing crest, as a fraction of logo height
+     */
+    frontSoftness?: number | null;
+    /**
+     * How far behind the crest the solid surfaces appear
+     */
+    wakeLag?: number | null;
+    coreRadius?: number | null;
+    coreStrength?: number | null;
+  };
+  /**
+   * The scribble wireframe that carries the charge
+   */
+  ignitionCage?: {
+    /**
+     * Fraction of wireframe lines drawn. At 1 it looks like CAD; lower reads as pencil scribble.
+     */
+    cageDensity?: number | null;
+    /**
+     * Same, on screens below 640px
+     */
+    cageDensityMobile?: number | null;
+    cageOpacity?: number | null;
+    /**
+     * Changes which lines are drawn. Same number = same cage every load.
+     */
+    cageSeed?: number | null;
+  };
+  /**
+   * The graphite-to-hot ramp, and the dark mass that makes red readable
+   */
+  ignitionColor?: {
+    /**
+     * Unlit cage — matches the pencil in the sketch video
+     */
+    coldColor?: string | null;
+    warmColor?: string | null;
+    hotColor?: string | null;
+    /**
+     * The very peak of the charge. Kept small and brief.
+     */
+    crestColor?: string | null;
+    /**
+     * Faint dark fill shown only during the transition. Without it the red washes out against the paper background.
+     */
+    darkMassOpacity?: number | null;
+    glowDecay?: number | null;
+  };
+  /**
+   * The cage appears over the still-drawing sketch video as a sphere, blooms outward into a polygon, then collapses into the logo shape.
+   */
+  ignitionOverlay?: {
+    /**
+     * Turning this off starts the transition at the video cut instead, with no sphere beforehand.
+     */
+    overlayEnabled?: boolean | null;
+    /**
+     * How long before the video ends the sphere appears
+     */
+    overlayLeadMs?: number | null;
+    /**
+     * Starting sphere size, as a multiple of the logo
+     */
+    sphereScale?: number | null;
+    /**
+     * The cage's TOTAL size when fully bloomed, as a multiple of the logo — measured corner to corner. Both this and the sphere are measured against the logo, so this number IS the final size rather than a multiplier on the sphere. Anything below the sphere size is raised to it.
+     */
+    bloomScale?: number | null;
+    /**
+     * Shape it blooms into. 8 is an octagon, 6 a hexagon.
+     */
+    polySides?: number | null;
+    bloomStart?: number | null;
+    bloomEnd?: number | null;
+    /**
+     * When the bloomed shape starts collapsing into the logo
+     */
+    morphStart?: number | null;
+  };
+  /**
+   * Re-ignites while a visitor holds the logo and its skin peels away
+   */
+  ignitionPulse?: {
+    pulseEnabled?: boolean | null;
+    /**
+     * Length of one pulse, and the gap before the next
+     */
+    pulseMs?: number | null;
+  };
+  /**
+   * How much the cage writhes, and how it crackles
+   */
+  ignitionLife?: {
+    /**
+     * How far the wires drift, as a fraction of the logo radius
+     */
+    wireJitter?: number | null;
+    wireSpeed?: number | null;
+    /**
+     * Randomness in the charge front. 0 gives a clean, even ring.
+     */
+    sparkStagger?: number | null;
+    sparkRate?: number | null;
+    /**
+     * How many wires are lit at once. High values wash out.
+     */
+    sparkDensity?: number | null;
+    /**
+     * Sparking while the cage is still cold, over the video
+     */
+    sparkIdle?: number | null;
+  };
+  /**
+   * Glowing particles at the cage junctions
+   */
+  ignitionEmbers?: {
+    emberEnabled?: boolean | null;
+    /**
+     * Fraction of cage junctions that carry an ember
+     */
+    emberDensity?: number | null;
+    emberSize?: number | null;
+    emberTwinkle?: number | null;
+    emberOpacity?: number | null;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "site-settings_select".
  */
 export interface SiteSettingsSelect<T extends boolean = true> {
@@ -771,6 +1025,137 @@ export interface SiteSettingsSelect<T extends boolean = true> {
     | {
         title?: T;
         description?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "hero-effects_select".
+ */
+export interface HeroEffectsSelect<T extends boolean = true> {
+  separationEnabled?: T;
+  timing?:
+    | T
+    | {
+        chargeMs?: T;
+        reformMs?: T;
+        separateStart?: T;
+        staggerMax?: T;
+      };
+  motion?:
+    | T
+    | {
+        spreadFrac?: T;
+        spreadVar?: T;
+        lateralDrift?: T;
+        spinMin?: T;
+        spinMax?: T;
+        capNormalMin?: T;
+      };
+  material?:
+    | T
+    | {
+        normalFollow?: T;
+        hatchStrength?: T;
+        hatchScale?: T;
+        shineStrength?: T;
+        shineWidth?: T;
+        shineSpeed?: T;
+        shineChargeBoost?: T;
+        shineWarm?: T;
+        shineBright?: T;
+      };
+  body?:
+    | T
+    | {
+        skinOpacity?: T;
+        bodyOpacity?: T;
+        bodyEdgeOpacity?: T;
+        bodyEdgeAngle?: T;
+      };
+  feel?:
+    | T
+    | {
+        vibrateFrac?: T;
+        vibratePhaseStep?: T;
+        dragThresholdPx?: T;
+      };
+  ignitionEnabled?: T;
+  ignitionTiming?:
+    | T
+    | {
+        ignitionMs?: T;
+        seedEnd?: T;
+        frontEnd?: T;
+        cueFrac?: T;
+      };
+  ignitionShape?:
+    | T
+    | {
+        seedOffsetX?: T;
+        seedOffsetY?: T;
+        seedOffsetZ?: T;
+        frontSoftness?: T;
+        wakeLag?: T;
+        coreRadius?: T;
+        coreStrength?: T;
+      };
+  ignitionCage?:
+    | T
+    | {
+        cageDensity?: T;
+        cageDensityMobile?: T;
+        cageOpacity?: T;
+        cageSeed?: T;
+      };
+  ignitionColor?:
+    | T
+    | {
+        coldColor?: T;
+        warmColor?: T;
+        hotColor?: T;
+        crestColor?: T;
+        darkMassOpacity?: T;
+        glowDecay?: T;
+      };
+  ignitionOverlay?:
+    | T
+    | {
+        overlayEnabled?: T;
+        overlayLeadMs?: T;
+        sphereScale?: T;
+        bloomScale?: T;
+        polySides?: T;
+        bloomStart?: T;
+        bloomEnd?: T;
+        morphStart?: T;
+      };
+  ignitionPulse?:
+    | T
+    | {
+        pulseEnabled?: T;
+        pulseMs?: T;
+      };
+  ignitionLife?:
+    | T
+    | {
+        wireJitter?: T;
+        wireSpeed?: T;
+        sparkStagger?: T;
+        sparkRate?: T;
+        sparkDensity?: T;
+        sparkIdle?: T;
+      };
+  ignitionEmbers?:
+    | T
+    | {
+        emberEnabled?: T;
+        emberDensity?: T;
+        emberSize?: T;
+        emberTwinkle?: T;
+        emberOpacity?: T;
       };
   updatedAt?: T;
   createdAt?: T;

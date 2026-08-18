@@ -37,6 +37,11 @@ npm run seed          # admin user, settings, statements, services, works, home 
 npm run seed:verify   # sanity-check counts + a couple of localized values
 ```
 
+`unstable_cache` writes to disk at `.next/cache/`, and `revalidateTag` cannot
+fire from a seed script — so after seeding run `rm -rf .next/cache` or the site
+will keep serving the previous values. Publishing from `/admin` revalidates
+correctly and needs no manual step.
+
 `payload run` doesn't work in non-TTY shells on this machine, so seed/verify
 run via `node --env-file=.env --import tsx src/seed/*.ts` instead (see
 `package.json`).
@@ -85,6 +90,13 @@ migration in production). No other file references the DB adapter.
 - **Global:** `site-settings` (nav labels, contact info). The site ships a
   single Atelier appearance — no appearance-switch labels or transition
   kill-switch.
+- **Global:** `hero-effects` — physics and material settings for the hero logo
+  separation (hold the logo to pull it apart). Not localized. All 26 editable
+  values (24 numeric + 2 hex colours) are range-clamped to match the dev
+  tuning bench at `/[locale]/dev/shatter`, which can write back to this global
+  with its "save to CMS" button. `separationEnabled` disables the interaction
+  only — the glass skin, pencil hatching, light wash and wireframe ghost all
+  remain.
 - All text-bearing fields are `localized: true` (`en` default, `id`
   secondary). A page's block **layout** (which blocks, in what order) is
   shared across locales; the text *inside* each block is per-locale.
@@ -108,42 +120,28 @@ the social links in `site-settings` (empty until real accounts exist).
 
 ## Assets
 
-The hero intro is the **original pencil drawing, animated by code** — not a
-video, and not a procedural redraw. The old stitched draw-in + Kling extrusion
-clip (`sketch-draw-16x9.mp4`/`.webm`, 2.2 MB) was deleted in 2026-08; its
-frames were a photograph of a real graphite sketch, so the artwork was cut out
-of them instead of being reinvented. That is what keeps the construction
-circle, the doubled strokes where the hand went back over an edge and the
-eraser smudge — none of those survive a procedural rebuild.
+The hero intro is the **stitched draw-in + Kling extrusion clip**
+(`public/media/sketch-draw-16x9.mp4` / `.webm`), whose frames are a photograph
+of a real graphite sketch — that is what keeps the construction circle, the
+doubled strokes where the hand went back over an edge, and the eraser smudge.
+`paper-bg-hero.webp` fills the hero with the clip's own paper on mobile, where
+the video only occupies a mid-screen band. `sketch-poster.webp` is the clip's
+final frame and doubles as the OG/Twitter share image.
 
-Layers in `public/media/` (295 KB total, from 2.2 MB):
+The mesh takes over from the video at the same on-screen size and position, so
+retuning logo placement means editing `lib/three/calibration.ts` and nothing
+else — `videoCoverScale()` there accounts for the video being `object-fit:
+cover` on anything wider than 16:9.
 
-| file | what it is |
-|---|---|
-| `paper-hero-full.webp` | the clean sheet, before a single mark |
-| `sketch-outline.webp` | the drawn outline, ~1.9s into the clip |
-| `sketch-red.webp` | red-pencil areas only, ~3.9s |
-| `sketch-graphite.webp` | graphite areas only, ~3.9s |
-| `sketch-guides.webp` | construction ticks + smudge, which stay on the sheet |
+Colours on both sides of the handoff are **measured, not chosen**:
+`lib/three/materials.ts` is tuned so the mesh renders at the clip's own
+third-act mean (red `#83484B`, graphite `#5E534E`), which is what stops the
+handoff reading as a colour jump. Re-measure before changing them.
 
-Each sketch layer is stored as `frame ÷ clean-paper`, so white means "no
-graphite here" and `mix-blend-mode: multiply` over the paper reproduces the
-original frame. The animation is then only how much of each layer is let
-through. Regenerate them with `scripts/make-sketch-assets.py` against the
-video (recover it with `git show 31c4a57:public/media/sketch-draw-16x9.mp4`)
-rather than hand-editing.
-
-Placement lives in
-[`src/components/hero/sketchLayout.ts`](src/components/hero/sketchLayout.ts):
-the drawn logo's ink box is matched to `CALIB` exactly as `LogoEngine` sizes
-the mesh, so retuning logo placement still means editing
-`lib/three/calibration.ts` and nothing else. `sketch-poster.webp` stays as the
-OG/Twitter share image.
-
-Colours on both sides of the handoff are **measured, not chosen**: the drawn
-phase is the photograph, and `lib/three/materials.ts` is tuned so the mesh
-renders at the clip's own third-act mean (red `#83484B`, graphite `#5E534E`).
-Re-measure before changing them.
+Work cover marks are generated per project by
+[`src/components/work/WorkMark.tsx`](src/components/work/WorkMark.tsx), seeded
+from the slug — `PlaceholderFrame` falls back to the studio watermark when no
+slug is passed, which is what the decorative frames want.
 
 Other generated/produced assets (logo GLB, textures, Higgsfield
 outputs) live in `../_ASSETS/` (parent `WEBSITE` folder) with full
@@ -170,11 +168,10 @@ Re-measured 2026-08-02 on a clean `npm run build`. Run the build with the dev
 server **stopped** — both write `.next`, and racing them fails the prerender
 with a bogus `webpack-runtime` "Cannot read properties of undefined".
 
-- Base shared JS: 102 KB gz (budget: < 250 KB) — unchanged by the hero rework.
+- Base shared JS: 102 KB gz (budget: < 250 KB).
 - three.js lazy chunk (logo only, code-split via `next/dynamic(ssr:false)`):
   142.6 KB gz combined (budget: ≤ 180 KB gz). Never included in the base
   bundle — confirmed by grepping the shared chunks for three.js signatures.
-- Hero intro: no media request at all. The inlined logo paths (17.4 KB raw,
-  8.0 KB gz) land in the `/[locale]` route chunk, not the shared base, and
-  replaced a 2.2 MB video pair.
+  Re-measure after the ignition/shatter work — it lands in this chunk.
+- Hero video: ~0.9 MB mp4 / ~0.3 MB webm (budget: ≤ 3.5 MB).
 - Logo GLB (Draco-compressed): 53.7 KB (budget: ≤ 300 KB).

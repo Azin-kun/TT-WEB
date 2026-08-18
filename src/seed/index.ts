@@ -84,6 +84,82 @@ const run = async () => {
     },
   })
 
+  // --- hero effects (not localized) ---
+  await payload.updateGlobal({
+    slug: 'hero-effects',
+    data: {
+      separationEnabled: true,
+      timing: { chargeMs: 950, reformMs: 2500, separateStart: 0.65, staggerMax: 0.2 },
+      motion: {
+        spreadFrac: 1.6,
+        spreadVar: 0.8,
+        lateralDrift: 0.75,
+        spinMin: 0.18,
+        spinMax: 0.21,
+        capNormalMin: 0.79,
+      },
+      material: {
+        normalFollow: 0.55,
+        hatchStrength: 0.65,
+        hatchScale: 0.5,
+        shineStrength: 0.3,
+        shineWidth: 0.05,
+        shineSpeed: 0.9,
+        shineChargeBoost: 1,
+        shineWarm: '#B4571C',
+        shineBright: '#FFF8E0',
+      },
+      body: { skinOpacity: 0.6, bodyOpacity: 0, bodyEdgeOpacity: 0.9, bodyEdgeAngle: 26 },
+      feel: { vibrateFrac: 0.006, vibratePhaseStep: 1.1, dragThresholdPx: 6 },
+      ignitionEnabled: true,
+      ignitionTiming: { ignitionMs: 2000, seedEnd: 0.12, frontEnd: 0.78, cueFrac: 0.73 },
+      ignitionShape: {
+        seedOffsetX: 0,
+        seedOffsetY: 0,
+        seedOffsetZ: 0,
+        frontSoftness: 0.18,
+        wakeLag: 0.1,
+        coreRadius: 0.22,
+        coreStrength: 1,
+      },
+      ignitionCage: { cageDensity: 0.3, cageDensityMobile: 0.3, cageOpacity: 0.26, cageSeed: 1337 },
+      ignitionColor: {
+        coldColor: '#2B2A27',
+        warmColor: '#8E1114',
+        hotColor: '#C8341A',
+        crestColor: '#FFF8E0',
+        darkMassOpacity: 0.12,
+        glowDecay: 2.4,
+      },
+      ignitionOverlay: {
+        overlayEnabled: true,
+        overlayLeadMs: 1000,
+        sphereScale: 1,
+        bloomScale: 1.1,
+        polySides: 8,
+        bloomStart: 0.15,
+        bloomEnd: 0.6,
+        morphStart: 0.6,
+      },
+      ignitionPulse: { pulseEnabled: true, pulseMs: 2500 },
+      ignitionLife: {
+        wireJitter: 0.07,
+        wireSpeed: 6,
+        sparkStagger: 0.215,
+        sparkRate: 2.3,
+        sparkDensity: 0.19,
+        sparkIdle: 0.25,
+      },
+      ignitionEmbers: {
+        emberEnabled: true,
+        emberDensity: 0.39,
+        emberSize: 5,
+        emberTwinkle: 2.5,
+        emberOpacity: 0.95,
+      },
+    },
+  })
+
   // --- manifesto statements ---
   for (let i = 0; i < content.manifesto.length; i++) {
     const s = content.manifesto[i]
