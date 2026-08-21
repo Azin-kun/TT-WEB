@@ -17,6 +17,7 @@ export default function LogoCanvas({
   onIgnitionCue,
   onIgnitionDone,
   onLogoHover,
+  onUnavailable,
 }: {
   onReady?: () => void
   config?: SeparationConfig
@@ -26,6 +27,8 @@ export default function LogoCanvas({
   ignite?: boolean
   onIgnitionCue?: () => void
   onIgnitionDone?: () => void
+  /** WebGL could not start — the caller should put a static logo up instead. */
+  onUnavailable?: () => void
   /** fires when the cursor moves onto or off the mark, for the click-and-hold hint */
   onLogoHover?: (over: boolean) => void
 }) {
@@ -38,9 +41,11 @@ export default function LogoCanvas({
   const cueRef = useRef(onIgnitionCue)
   const doneRef = useRef(onIgnitionDone)
   const hoverRef = useRef(onLogoHover)
+  const unavailableRef = useRef(onUnavailable)
   cueRef.current = onIgnitionCue
   doneRef.current = onIgnitionDone
   hoverRef.current = onLogoHover
+  unavailableRef.current = onUnavailable
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -49,13 +54,16 @@ export default function LogoCanvas({
     // WebGL can be unavailable outright — disabled, blocklisted, or every live
     // context already taken (browsers cap them at ~16). The renderer throws
     // synchronously in that case, and an unhandled throw here takes the whole
-    // hero down. Degrade instead: no 3D logo, but the page survives and the
-    // floating words still arrive, since they hang off `done`.
+    // hero down. Degrade instead: the page survives, the planets still arrive
+    // (they hang off `done`), and `onUnavailable` lets the stage put a static
+    // logo up — without it the hero ends up empty, because the intro video has
+    // already faded itself out by the time this is known.
     let engine: LogoEngine
     try {
       engine = new LogoEngine(canvas, config, ignition)
     } catch (err) {
-      console.error('LogoEngine: WebGL unavailable, hero will render without the 3D logo', err)
+      console.error('LogoEngine: WebGL unavailable, hero falls back to the static logo', err)
+      unavailableRef.current?.()
       cueRef.current?.()
       doneRef.current?.()
       return
