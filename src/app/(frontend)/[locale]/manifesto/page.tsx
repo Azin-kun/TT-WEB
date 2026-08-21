@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { getManifesto, getSettings } from '../../../../lib/cms'
+import { getManifesto, getPlanets, getSettings } from '../../../../lib/cms'
 import { isLocale } from '../../../../lib/i18n'
 import { getAlternates } from '../../../../lib/i18n'
 import { ManifestoStrip } from '../../../../components/blocks/ManifestoStrip'
+import { MarginNotes } from '../../../../components/blocks/MarginNotes'
+import { WorldMap } from '../../../../components/blocks/WorldMap'
 import { manifesto } from '../../../../lib/manifestoContent'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -34,7 +36,11 @@ export default async function ManifestoPage({ params }: { params: Promise<{ loca
   if (!isLocale(locale)) notFound()
   const l = locale as 'en' | 'id'
 
-  const [statements, settings] = await Promise.all([getManifesto(locale), getSettings(locale)])
+  const [statements, settings, planets] = await Promise.all([
+    getManifesto(locale),
+    getSettings(locale),
+    getPlanets(),
+  ])
 
   const facts = [
     { label: l === 'id' ? 'Didirikan' : 'Founded', value: '2026' },
@@ -80,6 +86,32 @@ export default async function ManifestoPage({ params }: { params: Promise<{ loca
           ))}
         </dl>
       </section>
+
+      {/* Answers the question the hero now raises: what are those planets? */}
+      <section className="tt-container tt-mf-section">
+        <Eyebrow>{manifesto.semesta.eyebrow[l]}</Eyebrow>
+        <p className="tt-display tt-mf-lead">{manifesto.semesta.lead[l]}</p>
+        <p className="tt-mf-body">{manifesto.semesta.body[l]}</p>
+      </section>
+
+      {/* Same planets as the hero, put back where they actually are. */}
+      <WorldMap
+        planets={planets}
+        locale={l}
+        eyebrow={manifesto.map.eyebrow[l]}
+        lead={manifesto.map.lead[l]}
+        empty={manifesto.map.empty[l]}
+        listHeading={manifesto.map.listHeading[l]}
+        overflow={manifesto.map.overflow[l]}
+      />
+
+      {/* The hero's old margin notes live here now — see the component. */}
+      <MarginNotes
+        words={(settings.marginNotes || [])
+          .map((w) => w.word)
+          .filter((w): w is string => Boolean(w))}
+        eyebrow={l === 'id' ? 'Kosakata' : 'Vocabulary'}
+      />
 
       <section className="tt-container tt-mf-section">
         <Eyebrow>{manifesto.founders.eyebrow[l]}</Eyebrow>

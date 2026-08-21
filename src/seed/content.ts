@@ -39,6 +39,21 @@ export const content = {
       archive: { en: 'Archive', id: 'Arsip' } as T2,
     },
     archiveCountTemplate: { en: '{{count}} in the archive', id: '{{count}} di arsip' } as T2,
+    // The studio's own vocabulary. It used to drift around the hero logo;
+    // planets took that space (docs/CONCEPT-SEMESTA.md §3.8), so the words moved
+    // to the manifesto, where the studio is the one talking.
+    marginNotes: {
+      en: [
+        'empu', 'forged', 'precision', 'graphite',
+        'clinic', 'tailored', 'surakarta', 'amanah',
+        'keris', 'booking', 'records', 'proof',
+      ],
+      id: [
+        'empu', 'ditempa', 'presisi', 'grafit',
+        'klinik', 'tailor-made', 'surakarta', 'amanah',
+        'keris', 'booking', 'pasien', 'bukti',
+      ],
+    },
     seo: {
       title: {
         en: 'Tampa Taruno — Tailor-Made Clinic Systems, Surakarta',
@@ -56,28 +71,35 @@ export const content = {
     line1: { en: 'Mitreka Satata', id: 'Mitreka Satata' } as T2,
     line2: { en: 'Jer Basuki Mawa Bea', id: 'Jer Basuki Mawa Bea' } as T2,
     scrollCue: { en: 'Scroll', id: 'Scroll' } as T2,
-    // How many of the words below a phone shows (hero block's mobileWordLimit).
-    mobileWordLimit: 8,
-    // Margin notes tethered to the 3D logo. A phone renders only the first
-    // mobileWordLimit of them, so the craft vocabulary leads and the module
-    // nouns trail — reorder in /admin, the list there marks the cutoff.
-    floatingWords: {
-      en: [
-        'empu', 'forged', 'precision', 'graphite',
-        'clinic', 'tailored', 'surakarta', 'amanah',
-        'keris', 'booking', 'records', 'proof',
-      ],
-      id: [
-        'empu', 'ditempa', 'presisi', 'grafit',
-        'klinik', 'tailor-made', 'surakarta', 'amanah',
-        'keris', 'booking', 'pasien', 'bukti',
-      ],
-    },
   },
 
+  /**
+   * Cities a planet can be pinned to (docs/CONCEPT-SEMESTA.md §4).
+   *
+   * Coordinates are real — the manifesto map plots from them in phase 2, so a
+   * rounded-off guess would put a business in the sea. The list is a starting
+   * set, not a limit; the owner adds rows in /admin.
+   */
+  cities: [
+    { name: 'Surakarta', region: 'Jawa Tengah', lat: -7.5755, lng: 110.8243 },
+    { name: 'Yogyakarta', region: 'DI Yogyakarta', lat: -7.7956, lng: 110.3695 },
+    { name: 'Semarang', region: 'Jawa Tengah', lat: -6.9667, lng: 110.4167 },
+    { name: 'Jakarta', region: 'DKI Jakarta', lat: -6.2088, lng: 106.8456 },
+    { name: 'Bandung', region: 'Jawa Barat', lat: -6.9175, lng: 107.6191 },
+    { name: 'Surabaya', region: 'Jawa Timur', lat: -7.2575, lng: 112.7521 },
+    { name: 'Malang', region: 'Jawa Timur', lat: -7.9666, lng: 112.6326 },
+    { name: 'Denpasar', region: 'Bali', lat: -8.65, lng: 115.2167 },
+    { name: 'Medan', region: 'Sumatera Utara', lat: 3.5952, lng: 98.6722 },
+    { name: 'Makassar', region: 'Sulawesi Selatan', lat: -5.1477, lng: 119.4327 },
+  ],
+
+  // Section headings carry the universe rework's vocabulary
+  // (docs/CONCEPT-SEMESTA.md §6). Only the framing moved — every claim below
+  // this block is unchanged, because the honesty constraints at the top of this
+  // file do not bend for a theme.
   headings: {
-    featuredWorks: { en: 'REAL WORK', id: 'KARYA NYATA' } as T2,
-    services: { en: 'WHAT WE TAKE ON', id: 'YANG KAMI KERJAKAN' } as T2,
+    featuredWorks: { en: 'WHAT HAS TAKEN FORM', id: 'YANG SUDAH BERBENTUK' } as T2,
+    services: { en: 'WHAT WE CAN FORGE', id: 'APA YANG BISA DITEMPA' } as T2,
     contact: {
       en: 'The two people who read this are the two who build it.',
       id: 'Pesan ini dibaca dua orang — dan dua orang itu juga yang mengerjakan.',

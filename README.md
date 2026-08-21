@@ -52,6 +52,17 @@ npm run seed          # admin user, settings, statements, services, works, home 
 npm run seed:verify   # sanity-check counts + a couple of localized values
 ```
 
+`npm run seed` exits early once a user exists, so an existing database never
+receives anything added later. The universe rework (`docs/CONCEPT-SEMESTA.md`)
+ships its own additive backfill — safe to re-run, it only creates what is
+missing and never overwrites an edit made in `/admin`:
+
+```bash
+npm run seed:semesta            # cities, the margin-note words, the rewritten section headings
+npm run seed:planets-demo       # 12 FICTIONAL planets, so the hero can be judged before real ones exist
+npm run seed:planets-demo -- --clear   # remove them again
+```
+
 `unstable_cache` writes to disk at `.next/cache/`, and `revalidateTag` cannot
 fire from a seed script — so after seeding run `rm -rf .next/cache` or the site
 will keep serving the previous values. Publishing from `/admin` revalidates

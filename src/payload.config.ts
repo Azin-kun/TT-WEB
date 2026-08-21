@@ -11,6 +11,8 @@ import { Works } from './collections/Works'
 import { Services } from './collections/Services'
 import { ManifestoStatements } from './collections/ManifestoStatements'
 import { Pages } from './collections/Pages'
+import { Cities } from './collections/Cities'
+import { Businesses } from './collections/Businesses'
 import { SiteSettings } from './globals/SiteSettings'
 import { HeroEffects } from './globals/HeroEffects'
 
@@ -25,7 +27,7 @@ export default buildConfig({
     importMap: { baseDir: path.resolve(dirname) },
   },
   editor: lexicalEditor(),
-  collections: [Users, Media, Works, Services, ManifestoStatements, Pages],
+  collections: [Users, Media, Works, Services, ManifestoStatements, Pages, Cities, Businesses],
   globals: [SiteSettings, HeroEffects],
   localization: {
     locales: ['en', 'id'],

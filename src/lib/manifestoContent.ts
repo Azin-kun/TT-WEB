@@ -76,6 +76,42 @@ export const manifesto = {
     ],
   },
 
+  // Explains the planets in the hero (docs/CONCEPT-SEMESTA.md §6). Written for
+  // what is true in phase 1: the owner adds planets from the admin. It promises
+  // no public form, because there is not one yet.
+  semesta: {
+    eyebrow: { en: 'The universe', id: 'Semesta' } as T2,
+    lead: {
+      en: 'The logo is a centre of gravity, not an emblem.',
+      id: 'Logo ini pusat gravitasi, bukan lambang.',
+    } as T2,
+    body: {
+      en: 'Every planet orbiting the front page is one business standing behind this manifesto. Not a client list and not an advertisement — a statement that the way of working written on this page is theirs too. The oldest orbit closest, and each planet leaves a mark of its own. For now they are added from here, one at a time.',
+      id: 'Setiap planet yang mengorbit di halaman depan adalah satu usaha yang berdiri di belakang manifesto ini. Bukan daftar klien, bukan iklan — pernyataan bahwa cara kerja yang tertulis di halaman ini juga cara kerja mereka. Yang paling tua mengorbit paling dekat, dan tiap planet meninggalkan jejaknya sendiri. Untuk sekarang planet ditambahkan dari sini, satu per satu.',
+    } as T2,
+  },
+
+  // Copy for the drawn map (docs/CONCEPT-SEMESTA.md §5.1). The empty state is
+  // written to be true on day one, when nothing has been approved yet.
+  map: {
+    eyebrow: { en: 'The map', id: 'Peta' } as T2,
+    lead: {
+      en: 'Those orbits have addresses.',
+      id: 'Orbit itu punya alamat.',
+    } as T2,
+    empty: {
+      en: 'No planet has been approved yet. This map fills in as the first businesses arrive.',
+      id: 'Belum ada planet yang disetujui. Peta ini terisi begitu usaha pertama masuk.',
+    } as T2,
+    listHeading: { en: 'The full list', id: 'Daftar lengkap' } as T2,
+    // Only rendered once there are more businesses than the hero can carry.
+    // {{limit}} is replaced at render.
+    overflow: {
+      en: 'The hero carries {{limit}} planets at a time and rotates them daily. This list is all of them.',
+      id: 'Hero hanya memuat {{limit}} planet sekaligus dan bergilir tiap hari. Daftar ini lengkap.',
+    } as T2,
+  },
+
   founders: {
     eyebrow: { en: 'Who you get', id: 'Siapa yang mengerjakan' } as T2,
     body: {
